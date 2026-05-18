@@ -10,6 +10,7 @@
 .history
 .svn/
 .swiftpm/
+.swift-module-cache/
 migrate_working_dir/
 
 # IntelliJ related
@@ -43,3 +44,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local icon generation intermediates
+/assets/branding/*.bmp
+/assets/branding/*.rgba.png
