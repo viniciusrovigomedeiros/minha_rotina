@@ -4,6 +4,8 @@
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+require 'fileutils'
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -39,5 +41,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+  end
+
+  podfile_lock = File.join(__dir__, 'Podfile.lock')
+  manifest_lock = File.join(__dir__, 'Pods', 'Manifest.lock')
+  if File.exist?(podfile_lock)
+    FileUtils.cp(podfile_lock, manifest_lock)
   end
 end
