@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/utils/date_utils.dart';
 import '../../../data/models/activity_status.dart';
+import '../../shared/widgets/completion_quality_sheet.dart';
 import '../../../state/activities_controller.dart';
 import '../../../state/history_controller.dart';
 
@@ -32,10 +33,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Histórico')),
-      body: historyAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
-        data: (days) {
+      body: SafeArea(
+        top: false,
+        child: historyAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
+          data: (days) {
           return activitiesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error:
@@ -58,14 +61,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               final summary =
                   selectedSummary.isEmpty ? null : selectedSummary.first;
 
-              final plannedForSelectedDay =
-                  activities
-                      .where(
-                        (activity) =>
-                            activity.isActive &&
-                            activity.weekdays.contains(selectedDate.weekday),
-                      )
-                      .length;
+              final plannedForSelectedDay = summary?.totalPlanned ?? 0;
 
               final completedOnSelected = summary?.completed ?? 0;
               final skippedOnSelected =
@@ -77,10 +73,18 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   plannedForSelectedDay == 0
                       ? 0.0
                       : completedOnSelected / plannedForSelectedDay;
+              final selectedDayAverageQuality =
+                  summary == null || summary.completed == 0
+                      ? 0.0
+                      : summary.averageQualityRank;
 
               final totalCompletedHistory = days.fold<int>(
                 0,
                 (sum, day) => sum + day.completed,
+              );
+              final totalQualityScoreHistory = days.fold<double>(
+                0,
+                (sum, day) => sum + day.qualityScore,
               );
               final totalSkippedHistory = days.fold<int>(
                 0,
@@ -90,6 +94,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         .where((item) => item.status == ActivityStatus.skipped)
                         .length,
               );
+              final historyQualityAverage =
+                  totalCompletedHistory == 0
+                      ? 0.0
+                      : days.fold<double>(
+                            0,
+                            (sum, day) =>
+                                sum + (day.averageQualityRank * day.completed),
+                          ) /
+                          totalCompletedHistory;
 
               return RefreshIndicator(
                 onRefresh:
@@ -180,6 +193,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                 (item) => Padding(
                                   padding: const EdgeInsets.only(bottom: 6),
                                   child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Icon(
                                         _iconFor(item.status.name),
@@ -190,7 +205,26 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Expanded(child: Text(item.activityName)),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(item.activityName),
+                                            if (item.status ==
+                                                    ActivityStatus.completed &&
+                                                item.completionQuality !=
+                                                    null) ...[
+                                              const SizedBox(height: 4),
+                                              CompletionQualityChip(
+                                                quality:
+                                                    item.completionQuality!,
+                                                compact: true,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -232,6 +266,33 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                   value: '$totalCompletedHistory',
                                 ),
                                 _MetricTag(
+                                  label: 'Pontos (dia)',
+                                  value:
+                                      summary == null
+                                          ? '0.0'
+                                          : summary.qualityScore
+                                              .toStringAsFixed(1),
+                                ),
+                                _MetricTag(
+                                  label: 'Pontos (histórico)',
+                                  value: totalQualityScoreHistory
+                                      .toStringAsFixed(1),
+                                ),
+                                _MetricTag(
+                                  label: 'Qualidade média (dia)',
+                                  value:
+                                      summary == null || summary.completed == 0
+                                          ? 'Sem dados'
+                                          : '${selectedDayAverageQuality.toStringAsFixed(1)}/3',
+                                ),
+                                _MetricTag(
+                                  label: 'Qualidade média (histórico)',
+                                  value:
+                                      totalCompletedHistory == 0
+                                          ? 'Sem dados'
+                                          : '${historyQualityAverage.toStringAsFixed(1)}/3',
+                                ),
+                                _MetricTag(
                                   label: 'Puladas (histórico)',
                                   value: '$totalSkippedHistory',
                                 ),
@@ -250,7 +311,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               );
             },
           );
-        },
+          },
+        ),
       ),
     );
   }

@@ -21,19 +21,29 @@ class _MotivationCarouselCardState extends State<MotivationCarouselCard> {
   @override
   void initState() {
     super.initState();
-    _currentPage = widget.initialIndex.clamp(0, widget.phrases.length - 1);
+    _currentPage = _safePageIndex(
+      requestedIndex: widget.initialIndex,
+      phraseCount: widget.phrases.length,
+    );
     _pageController = PageController(initialPage: _currentPage);
   }
 
   @override
   void didUpdateWidget(covariant MotivationCarouselCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.phrases.length != widget.phrases.length &&
-        widget.phrases.isNotEmpty) {
-      final safeIndex = _currentPage.clamp(0, widget.phrases.length - 1);
+    if (oldWidget.phrases.length != widget.phrases.length) {
+      final safeIndex = _safePageIndex(
+        requestedIndex: _currentPage,
+        phraseCount: widget.phrases.length,
+      );
       _currentPage = safeIndex;
+
+      if (widget.phrases.isEmpty) {
+        return;
+      }
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
+        if (!mounted || !_pageController.hasClients) return;
         _pageController.jumpToPage(safeIndex);
       });
     }
@@ -145,5 +155,12 @@ class _MotivationCarouselCardState extends State<MotivationCarouselCard> {
     final hsl = HSLColor.fromColor(color);
     final lightness = (hsl.lightness - amount).clamp(0, 1).toDouble();
     return hsl.withLightness(lightness).toColor();
+  }
+
+  int _safePageIndex({required int requestedIndex, required int phraseCount}) {
+    if (phraseCount <= 0) {
+      return 0;
+    }
+    return requestedIndex.clamp(0, phraseCount - 1);
   }
 }

@@ -2,7 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/models/activity.dart';
+import 'history_controller.dart';
 import 'providers.dart';
+import 'weekly_dashboard_controller.dart';
+import 'weekly_goals_controller.dart';
 
 final activitiesControllerProvider =
     AsyncNotifierProvider<ActivitiesController, List<Activity>>(
@@ -25,6 +28,7 @@ class ActivitiesController extends AsyncNotifier<List<Activity>> {
       return ref.read(activityRepositoryProvider).getAll();
     });
     await _syncNotifications();
+    _invalidateDerivedStates();
   }
 
   Future<void> create({
@@ -83,12 +87,22 @@ class ActivitiesController extends AsyncNotifier<List<Activity>> {
   Future<void> _syncNotificationsWith(List<Activity> activities) async {
     final settings = await ref.read(userSettingsRepositoryProvider).get();
     final phrases = await ref.read(motivationPhraseRepositoryProvider).getAll();
+    final goals = await ref.read(weeklyGoalRepositoryProvider).getAll();
+    final dailyLogs = await ref.read(dailyLogRepositoryProvider).getAll();
     await ref
         .read(notificationServiceProvider)
         .syncNotifications(
           activities: activities,
           settings: settings,
           motivationPhrases: phrases,
+          goals: goals,
+          dailyLogs: dailyLogs,
         );
+  }
+
+  void _invalidateDerivedStates() {
+    ref.invalidate(historyControllerProvider);
+    ref.invalidate(weeklyDashboardControllerProvider);
+    ref.invalidate(weeklyGoalsControllerProvider);
   }
 }

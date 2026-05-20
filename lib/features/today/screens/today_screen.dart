@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/motivation_utils.dart';
 import '../../../core/utils/time_format.dart';
+import '../../../data/models/activity_completion_quality.dart';
 import '../../../data/models/activity_status.dart';
 import '../../../state/categories_controller.dart';
 import '../../../state/motivation_phrases_controller.dart';
@@ -43,11 +44,13 @@ class TodayScreen extends ConsumerWidget {
                 ? fixedIndex
                 : MotivationUtils.indexForDay(now, length: phrases.length);
 
-        return RefreshIndicator(
-          onRefresh: () => ref.read(todayControllerProvider.notifier).reload(),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
-            children: [
+        return SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(todayControllerProvider.notifier).reload(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+              children: [
               Text(
                 greeting,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -107,11 +110,12 @@ class TodayScreen extends ConsumerWidget {
                               item: item,
                               category: category,
                               onComplete:
-                                  () => _setStatus(
+                                  (quality) => _setStatus(
                                     ref,
                                     item.activity.id,
                                     ActivityStatus.completed,
                                     context,
+                                    completionQuality: quality,
                                   ),
                               onSkip:
                                   () => _setStatus(
@@ -146,7 +150,8 @@ class TodayScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -158,16 +163,21 @@ class TodayScreen extends ConsumerWidget {
     String activityId,
     ActivityStatus status,
     BuildContext context,
+    {ActivityCompletionQuality? completionQuality}
   ) async {
     await ref
         .read(todayControllerProvider.notifier)
-        .updateStatus(activityId: activityId, status: status);
+        .updateStatus(
+          activityId: activityId,
+          status: status,
+          completionQuality: completionQuality,
+        );
 
     if (!context.mounted) return;
 
     final message =
         status == ActivityStatus.completed
-            ? 'Boa! Atividade concluída.'
+            ? 'Boa! Atividade concluída com qualidade ${completionQuality?.label.toLowerCase() ?? 'ok'}.'
             : status == ActivityStatus.skipped
             ? 'Tudo bem, atividade marcada como pulada.'
             : 'Atividade voltou para pendente.';

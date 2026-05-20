@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/utils/time_format.dart';
+import '../../../data/models/activity_completion_quality.dart';
 import '../../../data/models/activity_status.dart';
 import '../../../data/models/category.dart';
 import '../../../state/today_controller.dart';
+import '../../shared/widgets/completion_quality_sheet.dart';
 
 class TodayActivityCard extends StatelessWidget {
   const TodayActivityCard({
@@ -19,7 +21,7 @@ class TodayActivityCard extends StatelessWidget {
 
   final TodayActivityItem item;
   final Category? category;
-  final VoidCallback onComplete;
+  final Future<void> Function(ActivityCompletionQuality quality) onComplete;
   final VoidCallback onSkip;
   final VoidCallback onReset;
   final VoidCallback onOpen;
@@ -79,6 +81,14 @@ class TodayActivityCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (status == ActivityStatus.completed &&
+                      item.completionQuality != null) ...[
+                    const SizedBox(height: 6),
+                    CompletionQualityChip(
+                      quality: item.completionQuality!,
+                      compact: true,
+                    ),
+                  ],
                   if (hasDescription) ...[
                     const SizedBox(height: 2),
                     Text(
@@ -128,7 +138,7 @@ class _StatusActionButton extends StatelessWidget {
   });
 
   final ActivityStatus status;
-  final VoidCallback onComplete;
+  final Future<void> Function(ActivityCompletionQuality quality) onComplete;
   final VoidCallback onSkip;
   final VoidCallback onReset;
 
@@ -195,7 +205,10 @@ class _StatusActionButton extends StatelessWidget {
     );
 
     if (selected == 'complete') {
-      onComplete();
+      if (!context.mounted) return;
+      final quality = await showCompletionQualitySheet(context);
+      if (quality == null) return;
+      await onComplete(quality);
     } else if (selected == 'skip') {
       onSkip();
     }

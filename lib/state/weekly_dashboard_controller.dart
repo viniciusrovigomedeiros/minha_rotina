@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../core/utils/date_utils.dart';
+import '../data/models/activity_completion_quality.dart';
 import '../data/models/activity_status.dart';
 import '../data/models/daily_activity_log.dart';
 import 'providers.dart';
@@ -40,6 +41,8 @@ class WeeklyDashboardState {
     required this.categoryPoints,
     required this.totalCompleted,
     required this.totalPlanned,
+    required this.totalQualityScore,
+    required this.averageQualityRank,
     required this.bestDayLabel,
     required this.currentStreak,
   });
@@ -48,6 +51,8 @@ class WeeklyDashboardState {
   final List<CategoryCompletionPoint> categoryPoints;
   final int totalCompleted;
   final int totalPlanned;
+  final double totalQualityScore;
+  final double averageQualityRank;
   final String bestDayLabel;
   final int currentStreak;
 
@@ -79,6 +84,7 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
     final activities = await ref.read(activityRepositoryProvider).getAll();
     final categories = await ref.read(categoryRepositoryProvider).getAll();
     final logs = await ref.read(dailyLogRepositoryProvider).getAll();
+    final dailyPlanRepository = ref.read(dailyPlanRepositoryProvider);
 
     final logsByDay = <String, List<DailyActivityLog>>{};
     for (final log in logs) {
@@ -90,14 +96,17 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
 
     int totalCompleted = 0;
     int totalPlanned = 0;
+    double totalQualityScore = 0;
+    final completedQualities = <ActivityCompletionQuality>[];
 
     for (int i = 0; i < 7; i++) {
       final date = start.add(Duration(days: i));
       final dayKey = DateUtilsX.toDayKey(date);
-      final planned =
-          activities
-              .where((activity) => activity.weekdays.contains(date.weekday))
-              .length;
+      final planSnapshot = await dailyPlanRepository.snapshotForDay(
+        date: date,
+        activities: activities,
+      );
+      final planned = planSnapshot.totalPlanned;
 
       final dayLogs = logsByDay[dayKey] ?? const [];
       final completedLogs =
@@ -108,6 +117,12 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
       final completed = completedLogs.length;
       totalCompleted += completed;
       totalPlanned += planned;
+      for (final completedLog in completedLogs) {
+        final quality =
+            completedLog.completionQuality ?? ActivityCompletionQuality.medium;
+        completedQualities.add(quality);
+        totalQualityScore += quality.weight;
+      }
 
       for (final completedLog in completedLogs) {
         final activity =
@@ -173,6 +188,10 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
       categoryPoints: categoryPoints,
       totalCompleted: totalCompleted,
       totalPlanned: totalPlanned,
+      totalQualityScore: totalQualityScore,
+      averageQualityRank: ActivityCompletionQualityX.averageRank(
+        completedQualities,
+      ),
       bestDayLabel:
           bestDay == null
               ? 'Sem dados'

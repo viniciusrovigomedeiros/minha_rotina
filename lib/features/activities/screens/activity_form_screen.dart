@@ -140,10 +140,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Editar atividade' : 'Nova atividade'),
       ),
-      body: categoriesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
-        data: (categories) {
+      body: SafeArea(
+        top: false,
+        child: categoriesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
+          data: (categories) {
           final fallbackCategory =
               categories.isNotEmpty ? categories.first.id : null;
           _categoryId ??= fallbackCategory;
@@ -287,24 +289,11 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   runSpacing: 8,
                   children:
                       _colorOptions.map((color) {
-                        final selected = _selectedColor == color;
-                        return GestureDetector(
+                        return _ColorOptionSwatch(
+                          color: Color(color),
+                          selected: _selectedColor == color,
                           onTap: () => setState(() => _selectedColor = color),
-                          child: Container(
-                            height: 34,
-                            width: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(color),
-                              border: Border.all(
-                                color:
-                                    selected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                          ),
+                          size: 38,
                         );
                       }).toList(),
                 ),
@@ -397,7 +386,8 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               ],
             ),
           );
-        },
+          },
+        ),
       ),
     );
   }
@@ -585,24 +575,11 @@ class _CreateCategoryDialogState extends State<_CreateCategoryDialog> {
               runSpacing: 8,
               children:
                   widget.colorOptions.map((color) {
-                    final selected = _selectedColor == color;
-                    return GestureDetector(
+                    return _ColorOptionSwatch(
+                      color: Color(color),
+                      selected: _selectedColor == color,
                       onTap: () => setState(() => _selectedColor = color),
-                      child: Container(
-                        height: 28,
-                        width: 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(color),
-                          border: Border.all(
-                            color:
-                                selected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
+                      size: 34,
                     );
                   }).toList(),
             ),
@@ -761,6 +738,60 @@ class _TimeInput extends StatelessWidget {
                 icon: const Icon(Icons.close_rounded, size: 18),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorOptionSwatch extends StatelessWidget {
+  const _ColorOptionSwatch({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    required this.size,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final iconColor = color.computeLuminance() > 0.62 ? Colors.black : Colors.white;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(size),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        height: size,
+        width: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          border: Border.all(
+            color: selected ? scheme.primary : scheme.outline.withValues(alpha: 0.45),
+            width: selected ? 3 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: selected
+                  ? scheme.primary.withValues(alpha: 0.22)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: selected ? 10 : 4,
+              spreadRadius: selected ? 1 : 0,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 160),
+          scale: selected ? 1 : 0,
+          child: Icon(Icons.check_rounded, size: size * 0.52, color: iconColor),
         ),
       ),
     );

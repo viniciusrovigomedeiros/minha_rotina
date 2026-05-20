@@ -1,12 +1,20 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../core/utils/weekly_goal_progress_utils.dart';
 import '../../core/utils/motivation_utils.dart';
 import '../models/activity.dart';
+import '../models/daily_activity_log.dart';
 import '../models/user_settings.dart';
+import '../models/weekly_goal.dart';
 
 class NotificationService {
+  static const MethodChannel _timezoneChannel = MethodChannel(
+    'app.minharotina.mobile/timezone',
+  );
+
   factory NotificationService() => _instance;
 
   NotificationService._internal();
@@ -21,6 +29,7 @@ class NotificationService {
     if (_initialized) return;
 
     tz_data.initializeTimeZones();
+    await _configureLocalTimezone();
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -46,13 +55,31 @@ class NotificationService {
     _initialized = true;
   }
 
+  Future<void> _configureLocalTimezone() async {
+    try {
+      final timezoneName = await _timezoneChannel.invokeMethod<String>(
+        'getLocalTimezone',
+      );
+      if (timezoneName == null || timezoneName.isEmpty) return;
+
+      tz.setLocalLocation(tz.getLocation(timezoneName));
+    } on PlatformException {
+      // Falls back to the timezone package default if native lookup fails.
+    } on ArgumentError {
+      // Falls back to the timezone package default if the identifier is unknown.
+    }
+  }
+
   Future<void> syncNotifications({
     required List<Activity> activities,
     required UserSettings settings,
     required List<String> motivationPhrases,
+    required List<WeeklyGoal> goals,
+    required List<DailyActivityLog> dailyLogs,
   }) async {
     if (!_initialized) return;
 
+    await _configureLocalTimezone();
     await _plugin.cancelAll();
     if (!settings.notificationsEnabled) return;
 
@@ -123,6 +150,45 @@ class NotificationService {
         matchDateTimeComponents: DateTimeComponents.time,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
+    }
+
+    if (settings.goalReminderNotificationsEnabled) {
+      final activeGoals = goals.where((goal) => goal.isActive).toList();
+      if (activeGoals.isNotEmpty) {
+        final progresses = WeeklyGoalProgressUtils.buildProgresses(
+          goals: activeGoals,
+          activities: activities,
+          dailyLogs: dailyLogs,
+        );
+        final pendingGoals =
+            progresses.where((progress) => !progress.isCompleted).toList();
+        final schedule = _nextDailyDate(settings.goalReminderMinutes);
+
+        await _plugin.zonedSchedule(
+          900000002,
+          pendingGoals.isEmpty ? 'Metas em dia' : 'Metas em andamento',
+          _buildGoalsReminderBody(
+            pendingGoals: pendingGoals,
+            allGoals: progresses,
+          ),
+          schedule,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'minha_rotina_goals',
+              'Metas',
+              channelDescription:
+                  'Lembretes de acompanhamento das metas cadastradas',
+              importance: Importance.defaultImportance,
+              priority: Priority.defaultPriority,
+            ),
+            iOS: DarwinNotificationDetails(),
+          ),
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        );
+      }
     }
   }
 
@@ -195,5 +261,25 @@ class NotificationService {
               phrases: source,
             );
     return 'Amanhã: $phrase';
+  }
+
+  String _buildGoalsReminderBody({
+    required List<WeeklyGoalProgress> pendingGoals,
+    required List<WeeklyGoalProgress> allGoals,
+  }) {
+    if (allGoals.isEmpty) {
+      return 'Crie sua primeira meta para acompanhar seu progresso.';
+    }
+
+    if (pendingGoals.isEmpty) {
+      return 'Suas metas ativas estão em dia. Mantenha o ritmo.';
+    }
+
+    final focusGoal = pendingGoals.first;
+    if (pendingGoals.length == 1) {
+      return 'Progresso de "${focusGoal.goal.name}": ${focusGoal.progressLabel}.';
+    }
+
+    return 'Você tem ${pendingGoals.length} metas em aberto. Próxima: ${focusGoal.goal.name} (${focusGoal.progressLabel}).';
   }
 }

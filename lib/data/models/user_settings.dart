@@ -4,7 +4,9 @@ class UserSettings {
     required this.showMotivationalMessage,
     required this.notificationsEnabled,
     required this.activityReminderNotificationsEnabled,
+    required this.goalReminderNotificationsEnabled,
     required this.bedtimeMotivationEnabled,
+    required this.goalReminderMinutes,
     required this.bedtimeMotivationMinutes,
     required this.themeKey,
     required this.motivationPhraseMode,
@@ -16,7 +18,9 @@ class UserSettings {
   final bool showMotivationalMessage;
   final bool notificationsEnabled;
   final bool activityReminderNotificationsEnabled;
+  final bool goalReminderNotificationsEnabled;
   final bool bedtimeMotivationEnabled;
+  final int goalReminderMinutes;
   final int bedtimeMotivationMinutes;
   final String themeKey;
   final String motivationPhraseMode;
@@ -28,7 +32,9 @@ class UserSettings {
     bool? showMotivationalMessage,
     bool? notificationsEnabled,
     bool? activityReminderNotificationsEnabled,
+    bool? goalReminderNotificationsEnabled,
     bool? bedtimeMotivationEnabled,
+    int? goalReminderMinutes,
     int? bedtimeMotivationMinutes,
     String? themeKey,
     String? motivationPhraseMode,
@@ -44,8 +50,12 @@ class UserSettings {
       activityReminderNotificationsEnabled:
           activityReminderNotificationsEnabled ??
           this.activityReminderNotificationsEnabled,
+      goalReminderNotificationsEnabled:
+          goalReminderNotificationsEnabled ??
+          this.goalReminderNotificationsEnabled,
       bedtimeMotivationEnabled:
           bedtimeMotivationEnabled ?? this.bedtimeMotivationEnabled,
+      goalReminderMinutes: goalReminderMinutes ?? this.goalReminderMinutes,
       bedtimeMotivationMinutes:
           bedtimeMotivationMinutes ?? this.bedtimeMotivationMinutes,
       themeKey: themeKey ?? this.themeKey,
@@ -65,7 +75,9 @@ class UserSettings {
       'notificationsEnabled': notificationsEnabled,
       'activityReminderNotificationsEnabled':
           activityReminderNotificationsEnabled,
+      'goalReminderNotificationsEnabled': goalReminderNotificationsEnabled,
       'bedtimeMotivationEnabled': bedtimeMotivationEnabled,
+      'goalReminderMinutes': goalReminderMinutes,
       'bedtimeMotivationMinutes': bedtimeMotivationMinutes,
       'themeKey': themeKey,
       'motivationPhraseMode': motivationPhraseMode,
@@ -82,8 +94,12 @@ class UserSettings {
       notificationsEnabled: (map['notificationsEnabled'] as bool?) ?? true,
       activityReminderNotificationsEnabled:
           (map['activityReminderNotificationsEnabled'] as bool?) ?? true,
+      goalReminderNotificationsEnabled:
+          (map['goalReminderNotificationsEnabled'] as bool?) ?? false,
       bedtimeMotivationEnabled:
           (map['bedtimeMotivationEnabled'] as bool?) ?? false,
+      goalReminderMinutes:
+          (map['goalReminderMinutes'] as int?) ?? ((19 * 60) + 30),
       bedtimeMotivationMinutes:
           (map['bedtimeMotivationMinutes'] as int?) ?? ((21 * 60) + 30),
       themeKey: map['themeKey'] as String? ?? 'blue',
@@ -101,7 +117,9 @@ class UserSettings {
       showMotivationalMessage: true,
       notificationsEnabled: true,
       activityReminderNotificationsEnabled: true,
+      goalReminderNotificationsEnabled: false,
       bedtimeMotivationEnabled: false,
+      goalReminderMinutes: (19 * 60) + 30,
       bedtimeMotivationMinutes: (21 * 60) + 30,
       themeKey: 'blue',
       motivationPhraseMode: 'daily',

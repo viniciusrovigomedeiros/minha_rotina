@@ -9,7 +9,9 @@ import '../../core/utils/motivation_utils.dart';
 import '../models/activity.dart';
 import '../models/category.dart';
 import '../models/daily_activity_log.dart';
+import '../models/daily_plan_snapshot.dart';
 import '../models/user_settings.dart';
+import '../models/weekly_goal.dart';
 import '../repositories/app_data_repository.dart';
 
 class BackupResult {
@@ -104,6 +106,8 @@ class JsonBackupService {
     try {
       final activitiesRaw = root['activities'];
       final dailyLogsRaw = root['dailyLogs'];
+      final dailyPlansRaw = root['dailyPlans'];
+      final weeklyGoalsRaw = root['weeklyGoals'];
       final categoriesRaw = root['categories'];
       final userSettingsRaw = root['userSettings'];
       final motivationPhrasesRaw = root['motivationPhrases'];
@@ -135,6 +139,28 @@ class JsonBackupService {
               )
               .toList();
 
+      final dailyPlans =
+          dailyPlansRaw is List
+              ? dailyPlansRaw
+                  .map(
+                    (entry) => DailyPlanSnapshot.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <DailyPlanSnapshot>[];
+
+      final weeklyGoals =
+          weeklyGoalsRaw is List
+              ? weeklyGoalsRaw
+                  .map(
+                    (entry) => WeeklyGoal.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <WeeklyGoal>[];
+
       final categories =
           categoriesRaw
               .map(
@@ -157,6 +183,8 @@ class JsonBackupService {
       await _appDataRepository.replaceAll(
         activities: activities,
         dailyLogs: dailyLogs,
+        dailyPlans: dailyPlans,
+        weeklyGoals: weeklyGoals,
         categories: categories,
         userSettings: userSettings,
         motivationPhrases: motivationPhrases,

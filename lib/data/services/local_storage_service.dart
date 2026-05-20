@@ -7,6 +7,8 @@ class LocalStorageService {
 
   static const String activitiesBoxName = 'activities_box';
   static const String dailyLogsBoxName = 'daily_logs_box';
+  static const String dailyPlansBoxName = 'daily_plans_box';
+  static const String weeklyGoalsBoxName = 'weekly_goals_box';
   static const String settingsBoxName = 'settings_box';
   static const String categoriesBoxName = 'categories_box';
   static const String metadataBoxName = 'metadata_box';
@@ -17,6 +19,8 @@ class LocalStorageService {
     await Future.wait([
       Hive.openBox<Map>(activitiesBoxName),
       Hive.openBox<Map>(dailyLogsBoxName),
+      Hive.openBox<Map>(dailyPlansBoxName),
+      Hive.openBox<Map>(weeklyGoalsBoxName),
       Hive.openBox<Map>(settingsBoxName),
       Hive.openBox<Map>(categoriesBoxName),
       Hive.openBox<Map>(metadataBoxName),
@@ -36,6 +40,8 @@ class LocalStorageService {
 
   static Box<Map> get activitiesBox => Hive.box<Map>(activitiesBoxName);
   static Box<Map> get dailyLogsBox => Hive.box<Map>(dailyLogsBoxName);
+  static Box<Map> get dailyPlansBox => Hive.box<Map>(dailyPlansBoxName);
+  static Box<Map> get weeklyGoalsBox => Hive.box<Map>(weeklyGoalsBoxName);
   static Box<Map> get settingsBox => Hive.box<Map>(settingsBoxName);
   static Box<Map> get categoriesBox => Hive.box<Map>(categoriesBoxName);
   static Box<Map> get metadataBox => Hive.box<Map>(metadataBoxName);

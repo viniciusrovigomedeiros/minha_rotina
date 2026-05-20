@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 
+import '../models/activity_completion_quality.dart';
 import '../models/activity_status.dart';
 import '../models/daily_activity_log.dart';
 import '../services/local_storage_service.dart';
@@ -43,6 +44,7 @@ class DailyLogRepository {
     required String activityId,
     required String dayKey,
     required ActivityStatus status,
+    ActivityCompletionQuality? completionQuality,
   }) async {
     final existing = await findByActivityAndDay(
       activityId: activityId,
@@ -50,8 +52,20 @@ class DailyLogRepository {
     );
 
     final now = DateTime.now();
+    final resolvedQuality =
+        status == ActivityStatus.completed
+            ? (completionQuality ??
+                existing?.completionQuality ??
+                ActivityCompletionQuality.medium)
+            : null;
+
     if (existing != null) {
-      final updated = existing.copyWith(status: status, updatedAt: now);
+      final updated = existing.copyWith(
+        status: status,
+        completionQuality: resolvedQuality,
+        clearCompletionQuality: status != ActivityStatus.completed,
+        updatedAt: now,
+      );
       await saveLog(updated);
       return updated;
     }
@@ -61,6 +75,7 @@ class DailyLogRepository {
       activityId: activityId,
       dayKey: dayKey,
       status: status,
+      completionQuality: resolvedQuality,
       updatedAt: now,
     );
     await saveLog(created);

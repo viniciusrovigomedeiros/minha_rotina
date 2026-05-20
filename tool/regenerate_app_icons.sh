@@ -4,17 +4,24 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+src_master="assets/branding/app_icon_master.png"
 src_rgba="assets/branding/app_icon_master.rgba.png"
-src_rgb="assets/branding/app_icon_master.png"
+src_bmp="assets/branding/app_icon_master.bmp"
 ios_dest="ios/Runner/Assets.xcassets/AppIcon.appiconset"
 mac_dest="macos/Runner/Assets.xcassets/AppIcon.appiconset"
+android_res_root="android/app/src/main/res"
+web_root="web"
 
-mkdir -p assets/branding .swift-module-cache
+mkdir -p assets/branding
 
-swift -module-cache-path .swift-module-cache tool/generate_app_icon.swift "$src_rgba"
-ffmpeg -y -i "$src_rgba" -frames:v 1 -update 1 -pix_fmt rgb24 "$src_rgb" >/dev/null 2>&1
+if [[ ! -f "$src_master" ]]; then
+  echo "Missing source icon: $src_master" >&2
+  exit 1
+fi
 
-cp "$src_rgb" "$ios_dest/Icon-App-1024x1024@1x.png"
+sips -s format png "$src_master" --out "$src_rgba" >/dev/null
+sips -s format bmp "$src_master" --out "$src_bmp" >/dev/null
+sips -z 1024 1024 "$src_master" --out "$ios_dest/Icon-App-1024x1024@1x.png" >/dev/null
 
 for spec in \
   '20 Icon-App-20x20@1x.png' \
@@ -34,7 +41,7 @@ for spec in \
 do
   size=${spec%% *}
   file=${spec#* }
-  sips -z "$size" "$size" "$src_rgb" --out "$ios_dest/$file" >/dev/null
+  sips -z "$size" "$size" "$src_master" --out "$ios_dest/$file" >/dev/null
 done
 
 for spec in \
@@ -48,7 +55,31 @@ for spec in \
 do
   size=${spec%% *}
   file=${spec#* }
-  sips -z "$size" "$size" "$src_rgb" --out "$mac_dest/$file" >/dev/null
+  sips -z "$size" "$size" "$src_master" --out "$mac_dest/$file" >/dev/null
 done
 
-ffprobe -v error -select_streams v:0 -show_entries stream=width,height,pix_fmt -of default=noprint_wrappers=1 "$src_rgb"
+for spec in \
+  '48 mipmap-mdpi/ic_launcher.png' \
+  '72 mipmap-hdpi/ic_launcher.png' \
+  '96 mipmap-xhdpi/ic_launcher.png' \
+  '144 mipmap-xxhdpi/ic_launcher.png' \
+  '192 mipmap-xxxhdpi/ic_launcher.png'
+do
+  size=${spec%% *}
+  file=${spec#* }
+  sips -z "$size" "$size" "$src_master" --out "$android_res_root/$file" >/dev/null
+done
+
+for spec in \
+  '64 favicon.png' \
+  '192 icons/Icon-192.png' \
+  '192 icons/Icon-maskable-192.png' \
+  '512 icons/Icon-512.png' \
+  '512 icons/Icon-maskable-512.png'
+do
+  size=${spec%% *}
+  file=${spec#* }
+  sips -z "$size" "$size" "$src_master" --out "$web_root/$file" >/dev/null
+done
+
+sips -g pixelWidth -g pixelHeight "$src_master"

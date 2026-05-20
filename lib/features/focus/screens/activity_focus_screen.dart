@@ -5,6 +5,7 @@ import '../../../core/utils/motivation_utils.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../data/models/activity.dart';
 import '../../../data/models/activity_status.dart';
+import '../../shared/widgets/completion_quality_sheet.dart';
 import '../../../state/motivation_phrases_controller.dart';
 import '../../../state/today_controller.dart';
 
@@ -26,14 +27,16 @@ class ActivityFocusScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Foco da atividade')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Text(
                   activity.name,
                   style: Theme.of(context).textTheme.headlineSmall,
@@ -58,11 +61,14 @@ class ActivityFocusScreen extends ConsumerWidget {
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed: () async {
+                      final quality = await showCompletionQualitySheet(context);
+                      if (quality == null) return;
                       await ref
                           .read(todayControllerProvider.notifier)
                           .updateStatus(
                             activityId: activity.id,
                             status: ActivityStatus.completed,
+                            completionQuality: quality,
                           );
                       if (!context.mounted) return;
                       Navigator.of(context).pop();
@@ -89,7 +95,8 @@ class ActivityFocusScreen extends ConsumerWidget {
                     label: const Text('Pular hoje'),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

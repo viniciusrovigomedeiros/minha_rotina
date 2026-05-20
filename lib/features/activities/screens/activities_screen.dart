@@ -19,10 +19,12 @@ class ActivitiesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Atividades')),
-      body: activitiesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
-        data: (activities) {
+      body: SafeArea(
+        top: false,
+        child: activitiesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
+          data: (activities) {
           if (activities.isEmpty) {
             return const Center(
               child: Padding(
@@ -108,7 +110,8 @@ class ActivitiesScreen extends ConsumerWidget {
               ],
             ),
           );
-        },
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {

@@ -1,17 +1,23 @@
 import '../models/activity.dart';
 import '../models/category.dart';
 import '../models/daily_activity_log.dart';
+import '../models/daily_plan_snapshot.dart';
 import '../models/user_settings.dart';
+import '../models/weekly_goal.dart';
 import 'activity_repository.dart';
 import 'category_repository.dart';
 import 'daily_log_repository.dart';
+import 'daily_plan_repository.dart';
 import 'motivation_phrase_repository.dart';
 import 'user_settings_repository.dart';
+import 'weekly_goal_repository.dart';
 
 class AppDataSnapshot {
   const AppDataSnapshot({
     required this.activities,
     required this.dailyLogs,
+    required this.dailyPlans,
+    required this.weeklyGoals,
     required this.categories,
     required this.userSettings,
     required this.motivationPhrases,
@@ -20,6 +26,8 @@ class AppDataSnapshot {
 
   final List<Activity> activities;
   final List<DailyActivityLog> dailyLogs;
+  final List<DailyPlanSnapshot> dailyPlans;
+  final List<WeeklyGoal> weeklyGoals;
   final List<Category> categories;
   final UserSettings userSettings;
   final List<String> motivationPhrases;
@@ -30,6 +38,8 @@ class AppDataSnapshot {
       'meta': {'version': 1, 'exportedAt': exportedAt.toIso8601String()},
       'activities': activities.map((e) => e.toMap()).toList(),
       'dailyLogs': dailyLogs.map((e) => e.toMap()).toList(),
+      'dailyPlans': dailyPlans.map((e) => e.toMap()).toList(),
+      'weeklyGoals': weeklyGoals.map((e) => e.toMap()).toList(),
       'categories': categories.map((e) => e.toMap()).toList(),
       'userSettings': userSettings.toMap(),
       'motivationPhrases': motivationPhrases,
@@ -41,17 +51,23 @@ class AppDataRepository {
   AppDataRepository({
     required ActivityRepository activityRepository,
     required DailyLogRepository dailyLogRepository,
+    required DailyPlanRepository dailyPlanRepository,
+    required WeeklyGoalRepository weeklyGoalRepository,
     required CategoryRepository categoryRepository,
     required UserSettingsRepository userSettingsRepository,
     required MotivationPhraseRepository motivationPhraseRepository,
   }) : _activityRepository = activityRepository,
        _dailyLogRepository = dailyLogRepository,
+       _dailyPlanRepository = dailyPlanRepository,
+       _weeklyGoalRepository = weeklyGoalRepository,
        _categoryRepository = categoryRepository,
        _userSettingsRepository = userSettingsRepository,
        _motivationPhraseRepository = motivationPhraseRepository;
 
   final ActivityRepository _activityRepository;
   final DailyLogRepository _dailyLogRepository;
+  final DailyPlanRepository _dailyPlanRepository;
+  final WeeklyGoalRepository _weeklyGoalRepository;
   final CategoryRepository _categoryRepository;
   final UserSettingsRepository _userSettingsRepository;
   final MotivationPhraseRepository _motivationPhraseRepository;
@@ -59,6 +75,8 @@ class AppDataRepository {
   Future<AppDataSnapshot> snapshot() async {
     final activities = await _activityRepository.getAll();
     final dailyLogs = await _dailyLogRepository.getAll();
+    final dailyPlans = await _dailyPlanRepository.getAll();
+    final weeklyGoals = await _weeklyGoalRepository.getAll();
     final categories = await _categoryRepository.getAll();
     final userSettings = await _userSettingsRepository.get();
     final motivationPhrases = await _motivationPhraseRepository.getAll();
@@ -66,6 +84,8 @@ class AppDataRepository {
     return AppDataSnapshot(
       activities: activities,
       dailyLogs: dailyLogs,
+      dailyPlans: dailyPlans,
+      weeklyGoals: weeklyGoals,
       categories: categories,
       userSettings: userSettings,
       motivationPhrases: motivationPhrases,
@@ -76,12 +96,16 @@ class AppDataRepository {
   Future<void> replaceAll({
     required List<Activity> activities,
     required List<DailyActivityLog> dailyLogs,
+    required List<DailyPlanSnapshot> dailyPlans,
+    required List<WeeklyGoal> weeklyGoals,
     required List<Category> categories,
     required UserSettings userSettings,
     required List<String> motivationPhrases,
   }) async {
     await _activityRepository.clear();
     await _dailyLogRepository.clear();
+    await _dailyPlanRepository.clear();
+    await _weeklyGoalRepository.clear();
     await _categoryRepository.clear();
     await _userSettingsRepository.clear();
     await _motivationPhraseRepository.clearAll();
@@ -98,6 +122,12 @@ class AppDataRepository {
     for (final log in dailyLogs) {
       await _dailyLogRepository.saveLog(log);
     }
+    for (final plan in dailyPlans) {
+      await _dailyPlanRepository.save(plan);
+    }
+    for (final goal in weeklyGoals) {
+      await _weeklyGoalRepository.upsert(goal);
+    }
     await _userSettingsRepository.save(userSettings);
     await _motivationPhraseRepository.saveAll(motivationPhrases);
   }
@@ -105,6 +135,8 @@ class AppDataRepository {
   Future<void> clearAll() async {
     await _activityRepository.clear();
     await _dailyLogRepository.clear();
+    await _dailyPlanRepository.clear();
+    await _weeklyGoalRepository.clear();
     await _categoryRepository.clear();
     await _userSettingsRepository.clear();
     await _motivationPhraseRepository.clearAll();

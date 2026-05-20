@@ -77,6 +77,17 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
     );
   }
 
+  Future<void> updateGoalRemindersEnabled(bool value) async {
+    final current = state.value;
+    if (current == null) return;
+    await _save(
+      current.copyWith(
+        goalReminderNotificationsEnabled: value,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
   Future<void> updateBedtimeMotivationEnabled(bool value) async {
     final current = state.value;
     if (current == null) return;
@@ -99,6 +110,14 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
     );
   }
 
+  Future<void> updateGoalReminderMinutes(int minutes) async {
+    final current = state.value;
+    if (current == null) return;
+    await _save(
+      current.copyWith(goalReminderMinutes: minutes, updatedAt: DateTime.now()),
+    );
+  }
+
   Future<void> reload() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -115,12 +134,16 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
   Future<void> _syncNotifications(UserSettings settings) async {
     final activities = await ref.read(activityRepositoryProvider).getAll();
     final phrases = await ref.read(motivationPhraseRepositoryProvider).getAll();
+    final goals = await ref.read(weeklyGoalRepositoryProvider).getAll();
+    final dailyLogs = await ref.read(dailyLogRepositoryProvider).getAll();
     await ref
         .read(notificationServiceProvider)
         .syncNotifications(
           activities: activities,
           settings: settings,
           motivationPhrases: phrases,
+          goals: goals,
+          dailyLogs: dailyLogs,
         );
   }
 }

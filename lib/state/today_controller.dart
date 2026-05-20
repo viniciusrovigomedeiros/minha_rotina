@@ -1,21 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/utils/date_utils.dart';
+import '../data/models/activity_completion_quality.dart';
 import '../data/models/activity.dart';
 import '../data/models/activity_status.dart';
 import 'activities_controller.dart';
 import 'history_controller.dart';
 import 'providers.dart';
 import 'weekly_dashboard_controller.dart';
+import 'weekly_goals_controller.dart';
 
 class TodayActivityItem {
-  const TodayActivityItem({required this.activity, required this.status});
+  const TodayActivityItem({
+    required this.activity,
+    required this.status,
+    required this.completionQuality,
+  });
 
   final Activity activity;
   final ActivityStatus status;
+  final ActivityCompletionQuality? completionQuality;
 
-  TodayActivityItem copyWith({ActivityStatus? status}) {
-    return TodayActivityItem(activity: activity, status: status ?? this.status);
+  TodayActivityItem copyWith({
+    ActivityStatus? status,
+    ActivityCompletionQuality? completionQuality,
+    bool clearCompletionQuality = false,
+  }) {
+    return TodayActivityItem(
+      activity: activity,
+      status: status ?? this.status,
+      completionQuality:
+          clearCompletionQuality
+              ? null
+              : completionQuality ?? this.completionQuality,
+    );
   }
 }
 
@@ -88,6 +106,7 @@ class TodayController extends AsyncNotifier<TodayState> {
           return TodayActivityItem(
             activity: activity,
             status: log?.status ?? ActivityStatus.pending,
+            completionQuality: log?.completionQuality,
           );
         }).toList();
 
@@ -97,23 +116,53 @@ class TodayController extends AsyncNotifier<TodayState> {
   Future<void> updateStatus({
     required String activityId,
     required ActivityStatus status,
+    ActivityCompletionQuality? completionQuality,
   }) async {
     final current = state.value;
     if (current == null) return;
 
     final dayKey = DateUtilsX.toDayKey(current.date);
-    await ref
+    final updatedLog = await ref
         .read(dailyLogRepositoryProvider)
-        .upsertStatus(activityId: activityId, dayKey: dayKey, status: status);
+        .upsertStatus(
+          activityId: activityId,
+          dayKey: dayKey,
+          status: status,
+          completionQuality: completionQuality,
+        );
 
     final updatedItems =
         current.items.map((item) {
           if (item.activity.id != activityId) return item;
-          return item.copyWith(status: status);
+          return item.copyWith(
+            status: updatedLog.status,
+            completionQuality: updatedLog.completionQuality,
+            clearCompletionQuality:
+                updatedLog.status != ActivityStatus.completed,
+          );
         }).toList();
 
     state = AsyncData(TodayState(date: current.date, items: updatedItems));
     ref.invalidate(historyControllerProvider);
     ref.invalidate(weeklyDashboardControllerProvider);
+    ref.invalidate(weeklyGoalsControllerProvider);
+    await _syncNotifications();
+  }
+
+  Future<void> _syncNotifications() async {
+    final settings = await ref.read(userSettingsRepositoryProvider).get();
+    final activities = await ref.read(activityRepositoryProvider).getAll();
+    final phrases = await ref.read(motivationPhraseRepositoryProvider).getAll();
+    final goals = await ref.read(weeklyGoalRepositoryProvider).getAll();
+    final dailyLogs = await ref.read(dailyLogRepositoryProvider).getAll();
+    await ref
+        .read(notificationServiceProvider)
+        .syncNotifications(
+          activities: activities,
+          settings: settings,
+          motivationPhrases: phrases,
+          goals: goals,
+          dailyLogs: dailyLogs,
+        );
   }
 }

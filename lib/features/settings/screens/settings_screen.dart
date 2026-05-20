@@ -39,353 +39,405 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
-      body: settingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
-        data: (settings) {
-          final phrases = phrasesAsync.valueOrNull ?? const <String>[];
+      body: SafeArea(
+        top: false,
+        child: settingsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
+          data: (settings) {
+            final phrases = phrasesAsync.valueOrNull ?? const <String>[];
 
-          if (!_didLoadInitialName) {
-            _nameController.text = settings.userName;
-            _didLoadInitialName = true;
-          }
+            if (!_didLoadInitialName) {
+              _nameController.text = settings.userName;
+              _didLoadInitialName = true;
+            }
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text(
-                'Nome para saudação',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(hintText: 'Ex: Ronald'),
-                onSubmitted: (_) => _saveName(),
-              ),
-              const SizedBox(height: 10),
-              FilledButton(
-                onPressed: _isBusy ? null : _saveName,
-                child: const Text('Salvar nome'),
-              ),
-              const SizedBox(height: 24),
-              Text('Tema', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                'Escolha a paleta principal do app.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final option in AppTheme.options)
+            return ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                Text(
+                  'Nome para saudação',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(hintText: 'Ex: Ronald'),
+                  onSubmitted: (_) => _saveName(),
+                ),
+                const SizedBox(height: 10),
+                FilledButton(
+                  onPressed: _isBusy ? null : _saveName,
+                  child: const Text('Salvar nome'),
+                ),
+                const SizedBox(height: 24),
+                Text('Tema', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Text(
+                  'Escolha a paleta principal do app.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in AppTheme.options)
+                      ChoiceChip(
+                        selected: settings.themeKey == option.key,
+                        onSelected: (_) async {
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateThemeKey(option.key);
+                        },
+                        avatar: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: option.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        label: Text(option.label),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Notificações',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  margin: EdgeInsets.zero,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: BorderSide(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _SettingsSwitchRow(
+                        title: 'Ativar notificações',
+                        subtitle:
+                            'Controle geral de todos os lembretes do app.',
+                        value: settings.notificationsEnabled,
+                        onChanged: (value) async {
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateNotificationsEnabled(value);
+                        },
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsSwitchRow(
+                        title: 'Lembretes de atividades',
+                        subtitle:
+                            'Notifica atividades com horário inicial e lembrete ativo.',
+                        value: settings.activityReminderNotificationsEnabled,
+                        enabled: settings.notificationsEnabled,
+                        onChanged: (value) async {
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateActivityRemindersEnabled(value);
+                        },
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsSwitchRow(
+                        title: 'Lembrete de metas',
+                        subtitle:
+                            'Envia um lembrete diário para revisar o andamento das metas ativas.',
+                        value: settings.goalReminderNotificationsEnabled,
+                        enabled: settings.notificationsEnabled,
+                        onChanged: (value) async {
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateGoalRemindersEnabled(value);
+                        },
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsTimeRow(
+                        title: 'Horário do lembrete de metas',
+                        value: TimeOfDayUtils.format(
+                          TimeOfDayUtils.fromMinutes(
+                            settings.goalReminderMinutes,
+                          ),
+                        ),
+                        enabled:
+                            settings.notificationsEnabled &&
+                            settings.goalReminderNotificationsEnabled,
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDayUtils.fromMinutes(
+                              settings.goalReminderMinutes,
+                            ),
+                          );
+                          if (picked == null) return;
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateGoalReminderMinutes(
+                                TimeOfDayUtils.toMinutes(picked),
+                              );
+                        },
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsSwitchRow(
+                        title: 'Frase motivacional noturna',
+                        subtitle:
+                            'Antes de dormir, envia uma frase para te preparar para o próximo dia.',
+                        value: settings.bedtimeMotivationEnabled,
+                        enabled: settings.notificationsEnabled,
+                        onChanged: (value) async {
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateBedtimeMotivationEnabled(value);
+                        },
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsTimeRow(
+                        title: 'Horário da frase noturna',
+                        value: TimeOfDayUtils.format(
+                          TimeOfDayUtils.fromMinutes(
+                            settings.bedtimeMotivationMinutes,
+                          ),
+                        ),
+                        enabled:
+                            settings.notificationsEnabled &&
+                            settings.bedtimeMotivationEnabled,
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDayUtils.fromMinutes(
+                              settings.bedtimeMotivationMinutes,
+                            ),
+                          );
+                          if (picked == null) return;
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateBedtimeMotivationMinutes(
+                                TimeOfDayUtils.toMinutes(picked),
+                              );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Frases motivacionais',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Escolha se a frase muda todo dia ou se fica fixa.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
                     ChoiceChip(
-                      selected: settings.themeKey == option.key,
+                      label: const Text('Automático'),
+                      selected: settings.motivationPhraseMode != 'fixed',
                       onSelected: (_) async {
                         await ref
                             .read(userSettingsControllerProvider.notifier)
-                            .updateThemeKey(option.key);
-                      },
-                      avatar: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: option.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      label: Text(option.label),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Notificações',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Card(
-                margin: EdgeInsets.zero,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  side: BorderSide(
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    _SettingsSwitchRow(
-                      title: 'Ativar notificações',
-                      subtitle: 'Controle geral de todos os lembretes do app.',
-                      value: settings.notificationsEnabled,
-                      onChanged: (value) async {
-                        await ref
-                            .read(userSettingsControllerProvider.notifier)
-                            .updateNotificationsEnabled(value);
+                            .updateMotivationPhraseMode('daily');
                       },
                     ),
-                    const Divider(height: 1, thickness: 1),
-                    _SettingsSwitchRow(
-                      title: 'Lembretes de atividades',
-                      subtitle:
-                          'Notifica atividades com horário inicial e lembrete ativo.',
-                      value: settings.activityReminderNotificationsEnabled,
-                      enabled: settings.notificationsEnabled,
-                      onChanged: (value) async {
-                        await ref
-                            .read(userSettingsControllerProvider.notifier)
-                            .updateActivityRemindersEnabled(value);
-                      },
-                    ),
-                    const Divider(height: 1, thickness: 1),
-                    _SettingsSwitchRow(
-                      title: 'Frase motivacional noturna',
-                      subtitle:
-                          'Antes de dormir, envia uma frase para te preparar para o próximo dia.',
-                      value: settings.bedtimeMotivationEnabled,
-                      enabled: settings.notificationsEnabled,
-                      onChanged: (value) async {
-                        await ref
-                            .read(userSettingsControllerProvider.notifier)
-                            .updateBedtimeMotivationEnabled(value);
-                      },
-                    ),
-                    const Divider(height: 1, thickness: 1),
-                    _SettingsTimeRow(
-                      title: 'Horário da frase noturna',
-                      value: TimeOfDayUtils.format(
-                        TimeOfDayUtils.fromMinutes(
-                          settings.bedtimeMotivationMinutes,
-                        ),
-                      ),
-                      enabled:
-                          settings.notificationsEnabled &&
-                          settings.bedtimeMotivationEnabled,
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDayUtils.fromMinutes(
-                            settings.bedtimeMotivationMinutes,
-                          ),
-                        );
-                        if (picked == null) return;
-                        await ref
-                            .read(userSettingsControllerProvider.notifier)
-                            .updateBedtimeMotivationMinutes(
-                              TimeOfDayUtils.toMinutes(picked),
-                            );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Frases motivacionais',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Escolha se a frase muda todo dia ou se fica fixa.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('Automático'),
-                    selected: settings.motivationPhraseMode != 'fixed',
-                    onSelected: (_) async {
-                      await ref
-                          .read(userSettingsControllerProvider.notifier)
-                          .updateMotivationPhraseMode('daily');
-                    },
-                  ),
-                  ChoiceChip(
-                    label: const Text('Fixa'),
-                    selected: settings.motivationPhraseMode == 'fixed',
-                    onSelected:
-                        phrases.isEmpty
-                            ? null
-                            : (_) async {
-                              await ref
-                                  .read(userSettingsControllerProvider.notifier)
-                                  .updateMotivationPhraseMode('fixed');
-                              final selectedPhrase =
-                                  settings.fixedMotivationPhrase;
-                              if (selectedPhrase == null ||
-                                  !phrases.contains(selectedPhrase)) {
+                    ChoiceChip(
+                      label: const Text('Fixa'),
+                      selected: settings.motivationPhraseMode == 'fixed',
+                      onSelected:
+                          phrases.isEmpty
+                              ? null
+                              : (_) async {
                                 await ref
                                     .read(
                                       userSettingsControllerProvider.notifier,
                                     )
-                                    .updateFixedMotivationPhrase(phrases.first);
-                              }
+                                    .updateMotivationPhraseMode('fixed');
+                                final selectedPhrase =
+                                    settings.fixedMotivationPhrase;
+                                if (selectedPhrase == null ||
+                                    !phrases.contains(selectedPhrase)) {
+                                  await ref
+                                      .read(
+                                        userSettingsControllerProvider.notifier,
+                                      )
+                                      .updateFixedMotivationPhrase(
+                                        phrases.first,
+                                      );
+                                }
+                              },
+                    ),
+                  ],
+                ),
+                if (settings.motivationPhraseMode == 'fixed') ...[
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value:
+                        (settings.fixedMotivationPhrase != null &&
+                                phrases.contains(
+                                  settings.fixedMotivationPhrase,
+                                ))
+                            ? settings.fixedMotivationPhrase
+                            : (phrases.isEmpty ? null : phrases.first),
+                    items:
+                        phrases
+                            .map(
+                              (phrase) => DropdownMenuItem(
+                                value: phrase,
+                                child: Text(
+                                  phrase,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                    decoration: const InputDecoration(
+                      labelText: 'Frase fixa selecionada',
+                    ),
+                    onChanged:
+                        phrases.isEmpty
+                            ? null
+                            : (value) async {
+                              if (value == null) return;
+                              await ref
+                                  .read(userSettingsControllerProvider.notifier)
+                                  .updateFixedMotivationPhrase(value);
                             },
                   ),
                 ],
-              ),
-              if (settings.motivationPhraseMode == 'fixed') ...[
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value:
-                      (settings.fixedMotivationPhrase != null &&
-                              phrases.contains(settings.fixedMotivationPhrase))
-                          ? settings.fixedMotivationPhrase
-                          : (phrases.isEmpty ? null : phrases.first),
-                  items:
-                      phrases
-                          .map(
-                            (phrase) => DropdownMenuItem(
-                              value: phrase,
-                              child: Text(
-                                phrase,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
+                TextField(
+                  controller: _newPhraseController,
                   decoration: const InputDecoration(
-                    labelText: 'Frase fixa selecionada',
+                    hintText: 'Digite uma nova frase',
                   ),
-                  onChanged:
-                      phrases.isEmpty
-                          ? null
-                          : (value) async {
-                            if (value == null) return;
-                            await ref
-                                .read(userSettingsControllerProvider.notifier)
-                                .updateFixedMotivationPhrase(value);
-                          },
+                  onSubmitted: (_) => _addPhrase(),
                 ),
-              ],
-              const SizedBox(height: 8),
-              TextField(
-                controller: _newPhraseController,
-                decoration: const InputDecoration(
-                  hintText: 'Digite uma nova frase',
-                ),
-                onSubmitted: (_) => _addPhrase(),
-              ),
-              const SizedBox(height: 10),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 380;
+                const SizedBox(height: 10),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 380;
 
-                  final addButton = FilledButton.icon(
-                    onPressed: _isBusy ? null : _addPhrase,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Adicionar'),
-                  );
+                    final addButton = FilledButton.icon(
+                      onPressed: _isBusy ? null : _addPhrase,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Adicionar'),
+                    );
 
-                  final restoreButton = OutlinedButton.icon(
-                    onPressed: _isBusy ? null : _restoreDefaultPhrases,
-                    icon: const Icon(Icons.restart_alt_rounded),
-                    label: const Text(
-                      'Restaurar padrão',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
+                    final restoreButton = OutlinedButton.icon(
+                      onPressed: _isBusy ? null : _restoreDefaultPhrases,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                      label: const Text(
+                        'Restaurar padrão',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
 
-                  if (isNarrow) {
-                    return Column(
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          SizedBox(width: double.infinity, child: addButton),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: restoreButton,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
                       children: [
-                        SizedBox(width: double.infinity, child: addButton),
-                        const SizedBox(height: 8),
-                        SizedBox(width: double.infinity, child: restoreButton),
+                        Expanded(child: addButton),
+                        const SizedBox(width: 10),
+                        Expanded(child: restoreButton),
                       ],
                     );
-                  }
-
-                  return Row(
-                    children: [
-                      Expanded(child: addButton),
-                      const SizedBox(width: 10),
-                      Expanded(child: restoreButton),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade700,
+                  },
                 ),
-                onPressed: _isBusy ? null : _clearPhrases,
-                icon: const Icon(Icons.delete_sweep_rounded),
-                label: const Text('Excluir todas as frases'),
-              ),
-              const SizedBox(height: 10),
-              phrasesAsync.when(
-                loading: () => const LinearProgressIndicator(minHeight: 2),
-                error: (error, _) => Text('Erro ao carregar frases: $error'),
-                data: (phrases) {
-                  if (phrases.isEmpty) {
-                    return const Text('Sem frases cadastradas no momento.');
-                  }
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                  ),
+                  onPressed: _isBusy ? null : _clearPhrases,
+                  icon: const Icon(Icons.delete_sweep_rounded),
+                  label: const Text('Excluir todas as frases'),
+                ),
+                const SizedBox(height: 10),
+                phrasesAsync.when(
+                  loading: () => const LinearProgressIndicator(minHeight: 2),
+                  error: (error, _) => Text('Erro ao carregar frases: $error'),
+                  data: (phrases) {
+                    if (phrases.isEmpty) {
+                      return const Text('Sem frases cadastradas no momento.');
+                    }
 
-                  return Card(
-                    margin: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < phrases.length; i++) ...[
-                          ListTile(
-                            dense: true,
-                            visualDensity: VisualDensity.compact,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < phrases.length; i++) ...[
+                            ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              title: Text(phrases[i]),
+                              trailing: IconButton(
+                                onPressed:
+                                    _isBusy ? null : () => _removePhrase(i),
+                                icon: const Icon(Icons.delete_outline_rounded),
+                              ),
                             ),
-                            title: Text(phrases[i]),
-                            trailing: IconButton(
-                              onPressed:
-                                  _isBusy ? null : () => _removePhrase(i),
-                              icon: const Icon(Icons.delete_outline_rounded),
-                            ),
-                          ),
-                          if (i < phrases.length - 1)
-                            const Divider(height: 1, thickness: 1),
+                            if (i < phrases.length - 1)
+                              const Divider(height: 1, thickness: 1),
+                          ],
                         ],
-                      ],
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              Text('Dados', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _isBusy ? null : _exportJson,
-                icon: const Icon(Icons.file_upload_outlined),
-                label: const Text('Exportar e compartilhar JSON'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _isBusy ? null : _importJson,
-                icon: const Icon(Icons.file_download_outlined),
-                label: const Text('Importar dados de JSON'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade700,
+                      ),
+                    );
+                  },
                 ),
-                onPressed: _isBusy ? null : _confirmClearData,
-                icon: const Icon(Icons.delete_forever_outlined),
-                label: const Text('Limpar dados do app'),
-              ),
-            ],
-          );
-        },
+                const SizedBox(height: 24),
+                Text('Dados', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isBusy ? null : _exportJson,
+                  icon: const Icon(Icons.file_upload_outlined),
+                  label: const Text('Exportar e compartilhar JSON'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isBusy ? null : _importJson,
+                  icon: const Icon(Icons.file_download_outlined),
+                  label: const Text('Importar dados de JSON'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                  ),
+                  onPressed: _isBusy ? null : _confirmClearData,
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  label: const Text('Limpar dados do app'),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

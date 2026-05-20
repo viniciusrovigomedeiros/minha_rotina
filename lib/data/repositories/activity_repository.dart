@@ -9,7 +9,7 @@ class ActivityRepository {
     return values
         .map((entry) => Activity.fromMap(Map<String, dynamic>.from(entry)))
         .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+      ..sort(_compareBySchedule);
   }
 
   Future<Activity?> findById(String id) async {
@@ -28,5 +28,16 @@ class ActivityRepository {
 
   Future<void> clear() async {
     await LocalStorageService.activitiesBox.clear();
+  }
+
+  int _compareBySchedule(Activity a, Activity b) {
+    final aMinutes = a.startMinutes ?? 9999;
+    final bMinutes = b.startMinutes ?? 9999;
+
+    if (aMinutes != bMinutes) {
+      return aMinutes.compareTo(bMinutes);
+    }
+
+    return a.name.compareTo(b.name);
   }
 }
