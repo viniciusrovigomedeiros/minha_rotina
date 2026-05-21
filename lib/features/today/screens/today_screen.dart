@@ -30,6 +30,8 @@ class TodayScreen extends ConsumerWidget {
       error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
       data: (todayState) {
         final now = DateTime.now();
+        final selectedDate = todayState.date;
+        final isViewingToday = _isSameDay(selectedDate, now);
         final settings = settingsAsync.valueOrNull;
         final name = settings?.userName ?? '';
         final greeting = '${MotivationUtils.greetingByTime(now)}, $name';
@@ -59,8 +61,30 @@ class TodayScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                TimeFormat.dateLabel(now),
+                TimeFormat.dateLabel(selectedDate),
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _pickDate(context, ref, selectedDate),
+                      icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                      label: const Text('Escolher dia'),
+                    ),
+                  ),
+                  if (!isViewingToday) ...[
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed:
+                          () => ref
+                              .read(todayControllerProvider.notifier)
+                              .selectDate(now),
+                      child: const Text('Hoje'),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 14),
               MotivationCarouselCard(
@@ -76,7 +100,7 @@ class TodayScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               Text(
-                'Atividades de hoje',
+                isViewingToday ? 'Atividades de hoje' : 'Atividades do dia',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 10),
@@ -156,6 +180,31 @@ class TodayScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _pickDate(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime selectedDate,
+  ) async {
+    final today = DateTime.now();
+    final lastDate = DateTime(today.year, today.month, today.day);
+    final firstDate = DateTime(2000);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate.isAfter(lastDate) ? lastDate : selectedDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      locale: const Locale('pt', 'BR'),
+    );
+
+    if (picked == null) return;
+    await ref.read(todayControllerProvider.notifier).selectDate(picked);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   Future<void> _setStatus(

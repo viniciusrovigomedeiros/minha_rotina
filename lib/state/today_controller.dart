@@ -71,8 +71,25 @@ class TodayController extends AsyncNotifier<TodayState> {
   }
 
   Future<void> reload() async {
+    final selectedDate = state.value?.date ?? DateTime.now();
     state = await AsyncValue.guard(() async {
-      return _load(DateTime.now());
+      return _load(selectedDate);
+    });
+  }
+
+  Future<void> selectDate(DateTime date) async {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final currentDate = state.value?.date;
+    if (currentDate != null &&
+        currentDate.year == normalizedDate.year &&
+        currentDate.month == normalizedDate.month &&
+        currentDate.day == normalizedDate.day) {
+      return;
+    }
+
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      return _load(normalizedDate);
     });
   }
 

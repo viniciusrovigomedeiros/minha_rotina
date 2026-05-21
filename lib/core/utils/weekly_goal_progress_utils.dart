@@ -96,6 +96,17 @@ class WeeklyGoalProgressUtils {
     DateTime? referenceDate,
   }) {
     final base = _normalize(referenceDate ?? DateTime.now());
+    final explicitStart = goal.startDate;
+    final explicitEnd = goal.endDate;
+
+    if (explicitStart != null || explicitEnd != null) {
+      final start = _normalize(explicitStart ?? explicitEnd ?? goal.createdAt);
+      final end = _normalize(explicitEnd ?? explicitStart ?? goal.createdAt);
+      return GoalDateRange(
+        start: start,
+        end: end.isBefore(start) ? start : end,
+      );
+    }
 
     switch (goal.period) {
       case GoalPeriod.week:

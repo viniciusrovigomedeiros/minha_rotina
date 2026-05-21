@@ -33,6 +33,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
   late WeeklyGoalScope _scope;
   DateTime? _startDate;
   DateTime? _endDate;
+  bool _useCustomRange = false;
   String? _activityId;
   String? _categoryId;
   bool _isActive = true;
@@ -55,6 +56,9 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
       _categoryId = goal.categoryId;
       _startDate = goal.startDate;
       _endDate = goal.endDate;
+      _useCustomRange =
+          goal.period != GoalPeriod.custom &&
+          (goal.startDate != null || goal.endDate != null);
       _isActive = goal.isActive;
     } else {
       _trackingMode = GoalTrackingMode.automatic;
@@ -65,6 +69,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
       _currentController.text = '0';
       _unitController.text = '%';
     }
+    _ensureDateRangeDefaults();
   }
 
   @override
@@ -175,19 +180,12 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                           if (value == null) return;
                           setState(() {
                             _period = value;
-                            if (_period != GoalPeriod.custom) {
+                            if (_period == GoalPeriod.custom) {
+                              _useCustomRange = false;
+                              _ensureDateRangeDefaults();
+                            } else if (!_useCustomRange) {
                               _startDate = null;
                               _endDate = null;
-                            } else {
-                              final now = DateTime.now();
-                              _startDate ??= DateTime(
-                                now.year,
-                                now.month,
-                                now.day,
-                              );
-                              _endDate ??= _startDate!.add(
-                                const Duration(days: 89),
-                              );
                             }
                           });
                         },
@@ -197,7 +195,29 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                         _periodHelperText(),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
-                      if (_period == GoalPeriod.custom) ...[
+                      if (_period != GoalPeriod.custom) ...[
+                        const SizedBox(height: 8),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Personalizar datas do período'),
+                          subtitle: const Text(
+                            'Defina início e fim manualmente para essa meta.',
+                          ),
+                          value: _useCustomRange,
+                          onChanged: (value) {
+                            setState(() {
+                              _useCustomRange = value;
+                              if (_useCustomRange) {
+                                _ensureDateRangeDefaults();
+                              } else {
+                                _startDate = null;
+                                _endDate = null;
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                      if (_usesDateRange) ...[
                         const SizedBox(height: 14),
                         Row(
                           children: [
@@ -399,8 +419,7 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
       if (_scope == WeeklyGoalScope.activity && _activityId == null) return;
       if (_scope == WeeklyGoalScope.category && _categoryId == null) return;
     }
-    if (_period == GoalPeriod.custom &&
-        (_startDate == null || _endDate == null)) {
+    if (_usesDateRange && (_startDate == null || _endDate == null)) {
       return;
     }
 
@@ -442,8 +461,8 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                 _trackingMode == GoalTrackingMode.manual
                     ? _unitController.text.trim()
                     : null,
-            startDate: _period == GoalPeriod.custom ? _startDate : null,
-            endDate: _period == GoalPeriod.custom ? _endDate : null,
+            startDate: _usesDateRange ? _startDate : null,
+            endDate: _usesDateRange ? _endDate : null,
             isActive: _isActive,
           );
     } else {
@@ -475,8 +494,8 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                   _trackingMode == GoalTrackingMode.manual
                       ? _unitController.text.trim()
                       : null,
-              startDate: _period == GoalPeriod.custom ? _startDate : null,
-              endDate: _period == GoalPeriod.custom ? _endDate : null,
+              startDate: _usesDateRange ? _startDate : null,
+              endDate: _usesDateRange ? _endDate : null,
               clearType: _trackingMode == GoalTrackingMode.manual,
               clearScope: _trackingMode == GoalTrackingMode.manual,
               clearActivityId:
@@ -486,8 +505,8 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
                   _trackingMode == GoalTrackingMode.manual ||
                   _scope != WeeklyGoalScope.category,
               clearUnit: _trackingMode == GoalTrackingMode.automatic,
-              clearStartDate: _period != GoalPeriod.custom,
-              clearEndDate: _period != GoalPeriod.custom,
+              clearStartDate: !_usesDateRange,
+              clearEndDate: !_usesDateRange,
             ),
           );
     }
@@ -546,8 +565,10 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
   }
 
   String _periodHelperText() {
-    if (_period == GoalPeriod.custom) {
-      return 'Use datas livres para metas com prazo específico.';
+    if (_usesDateRange) {
+      return _period == GoalPeriod.custom
+          ? 'Use datas livres para metas com prazo específico.'
+          : 'Período personalizado para esta meta.';
     }
 
     final probeGoal = WeeklyGoal(
@@ -565,6 +586,55 @@ class _GoalFormScreenState extends ConsumerState<GoalFormScreen> {
     );
     final range = WeeklyGoalProgressUtils.resolveRange(goal: probeGoal);
     return 'Período atual: ${_formatDate(range.start)} até ${_formatDate(range.end)}';
+  }
+
+  bool get _usesDateRange => _period == GoalPeriod.custom || _useCustomRange;
+
+  void _ensureDateRangeDefaults() {
+    if (!_usesDateRange) return;
+    if (_startDate != null && _endDate != null) return;
+    if (_startDate != null && _endDate == null) {
+      _endDate = _startDate;
+      return;
+    }
+    if (_endDate != null && _startDate == null) {
+      _startDate = _endDate;
+      return;
+    }
+    final range = _defaultRangeForPeriod();
+    _startDate ??= range.start;
+    _endDate ??= range.end;
+  }
+
+  ({DateTime start, DateTime end}) _defaultRangeForPeriod() {
+    final now = DateTime.now();
+    final base = DateTime(now.year, now.month, now.day);
+
+    switch (_period) {
+      case GoalPeriod.week:
+        final start = base.subtract(Duration(days: base.weekday - 1));
+        return (start: start, end: start.add(const Duration(days: 6)));
+      case GoalPeriod.month:
+        return (
+          start: DateTime(base.year, base.month, 1),
+          end: DateTime(base.year, base.month + 1, 0),
+        );
+      case GoalPeriod.quarter:
+        final quarterStartMonth = (((base.month - 1) ~/ 3) * 3) + 1;
+        return (
+          start: DateTime(base.year, quarterStartMonth, 1),
+          end: DateTime(base.year, quarterStartMonth + 3, 0),
+        );
+      case GoalPeriod.year:
+        return (
+          start: DateTime(base.year, 1, 1),
+          end: DateTime(base.year, 12, 31),
+        );
+      case GoalPeriod.custom:
+        final start = _startDate ?? base;
+        final end = _endDate ?? start.add(const Duration(days: 89));
+        return (start: start, end: end);
+    }
   }
 
   String _formatDate(DateTime date) {

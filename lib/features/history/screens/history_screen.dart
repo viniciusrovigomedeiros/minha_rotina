@@ -206,22 +206,37 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                        child: Row(
                                           children: [
-                                            Text(item.activityName),
+                                            Expanded(
+                                              child: Text(
+                                                item.activityName,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
                                             if (item.status ==
                                                     ActivityStatus.completed &&
-                                                item.completionQuality !=
-                                                    null) ...[
-                                              const SizedBox(height: 4),
+                                                item.completionQuality != null)
                                               CompletionQualityChip(
                                                 quality:
                                                     item.completionQuality!,
                                                 compact: true,
+                                              )
+                                            else
+                                              Text(
+                                                '—',
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.labelSmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          Theme.of(
+                                                            context,
+                                                          ).colorScheme.outline,
+                                                    ),
                                               ),
-                                            ],
                                           ],
                                         ),
                                       ),
@@ -341,10 +356,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     switch (status) {
       case 'completed':
         return Icons.check_circle_rounded;
-      case 'skipped':
-        return Icons.skip_next_rounded;
       default:
-        return Icons.radio_button_unchecked_rounded;
+        return Icons.close_rounded;
     }
   }
 
