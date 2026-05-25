@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/utils/date_utils.dart';
+import '../data/models/activity_completion_payload.dart';
 import '../data/models/activity_completion_quality.dart';
 import '../data/models/activity.dart';
 import '../data/models/activity_status.dart';
@@ -15,16 +16,20 @@ class TodayActivityItem {
     required this.activity,
     required this.status,
     required this.completionQuality,
+    required this.qualityScore,
   });
 
   final Activity activity;
   final ActivityStatus status;
   final ActivityCompletionQuality? completionQuality;
+  final int? qualityScore;
 
   TodayActivityItem copyWith({
     ActivityStatus? status,
     ActivityCompletionQuality? completionQuality,
+    int? qualityScore,
     bool clearCompletionQuality = false,
+    bool clearQualityScore = false,
   }) {
     return TodayActivityItem(
       activity: activity,
@@ -33,6 +38,8 @@ class TodayActivityItem {
           clearCompletionQuality
               ? null
               : completionQuality ?? this.completionQuality,
+      qualityScore:
+          clearQualityScore ? null : qualityScore ?? this.qualityScore,
     );
   }
 }
@@ -124,6 +131,7 @@ class TodayController extends AsyncNotifier<TodayState> {
             activity: activity,
             status: log?.status ?? ActivityStatus.pending,
             completionQuality: log?.completionQuality,
+            qualityScore: log?.qualityScore,
           );
         }).toList();
 
@@ -134,6 +142,7 @@ class TodayController extends AsyncNotifier<TodayState> {
     required String activityId,
     required ActivityStatus status,
     ActivityCompletionQuality? completionQuality,
+    ActivityCompletionPayload? completionPayload,
   }) async {
     final current = state.value;
     if (current == null) return;
@@ -145,7 +154,12 @@ class TodayController extends AsyncNotifier<TodayState> {
           activityId: activityId,
           dayKey: dayKey,
           status: status,
-          completionQuality: completionQuality,
+          completionQuality:
+              completionPayload?.completionQuality ?? completionQuality,
+          qualityScore: completionPayload?.qualityScore,
+          qualityChecklistCheckedCount:
+              completionPayload?.checklistCheckedCount,
+          qualityChecklistTotalCount: completionPayload?.checklistTotalCount,
         );
 
     final updatedItems =
@@ -154,8 +168,10 @@ class TodayController extends AsyncNotifier<TodayState> {
           return item.copyWith(
             status: updatedLog.status,
             completionQuality: updatedLog.completionQuality,
+            qualityScore: updatedLog.qualityScore,
             clearCompletionQuality:
                 updatedLog.status != ActivityStatus.completed,
+            clearQualityScore: updatedLog.status != ActivityStatus.completed,
           );
         }).toList();
 

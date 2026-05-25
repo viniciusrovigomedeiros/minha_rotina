@@ -9,9 +9,9 @@ class MotivationPhraseRepository {
 
   Future<List<String>> getAll() async {
     final raw = LocalStorageService.metadataBox.get(_storageKey);
+    final defaults = List<String>.from(MotivationUtils.defaultPhrases);
 
     if (raw == null) {
-      final defaults = List<String>.from(MotivationUtils.defaultPhrases);
       await saveAll(defaults);
       return defaults;
     }
@@ -23,26 +23,41 @@ class MotivationPhraseRepository {
             .where((item) => item.isNotEmpty)
             .toList();
 
-    return items;
+    if (!_listsEqual(items, defaults)) {
+      await saveAll(defaults);
+      return defaults;
+    }
+
+    return defaults;
   }
 
   Future<void> saveAll(List<String> phrases) async {
+    final defaults = List<String>.from(MotivationUtils.defaultPhrases);
+    final allowed = defaults.toSet();
     final sanitized =
         phrases
             .map((item) => item.trim())
             .where((item) => item.isNotEmpty)
+            .where(allowed.contains)
             .toList();
+    final result = sanitized.isEmpty ? defaults : sanitized;
 
-    await LocalStorageService.metadataBox.put(_storageKey, {
-      _itemsKey: sanitized,
-    });
+    await LocalStorageService.metadataBox.put(_storageKey, {_itemsKey: result});
   }
 
   Future<void> clearAll() async {
-    await saveAll(const []);
+    await saveAll(MotivationUtils.defaultPhrases);
   }
 
   Future<void> restoreDefaults() async {
     await saveAll(MotivationUtils.defaultPhrases);
+  }
+
+  bool _listsEqual(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

@@ -5,6 +5,7 @@ import '../data/models/activity.dart';
 import '../data/models/activity_completion_quality.dart';
 import '../data/models/activity_status.dart';
 import '../data/models/daily_activity_log.dart';
+import '../data/models/daily_closure_entry.dart';
 import 'providers.dart';
 
 class HistoryActivitySummary {
@@ -12,11 +13,13 @@ class HistoryActivitySummary {
     required this.activityName,
     required this.status,
     required this.completionQuality,
+    required this.qualityScore,
   });
 
   final String activityName;
   final ActivityStatus status;
   final ActivityCompletionQuality? completionQuality;
+  final int? qualityScore;
 }
 
 class HistoryDaySummary {
@@ -26,7 +29,9 @@ class HistoryDaySummary {
     required this.totalPlanned,
     required this.qualityScore,
     required this.averageQualityRank,
+    required this.averageQualityScore,
     required this.items,
+    required this.dailyClosure,
   });
 
   final String dayKey;
@@ -34,7 +39,9 @@ class HistoryDaySummary {
   final int totalPlanned;
   final double qualityScore;
   final double averageQualityRank;
+  final double averageQualityScore;
   final List<HistoryActivitySummary> items;
+  final DailyClosureEntry? dailyClosure;
 
   double get completionRate => totalPlanned == 0 ? 0 : completed / totalPlanned;
 }
@@ -59,13 +66,22 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
     final activities = await ref.read(activityRepositoryProvider).getAll();
     final logs = await ref.read(dailyLogRepositoryProvider).getAll();
     final dailyPlanRepository = ref.read(dailyPlanRepositoryProvider);
+    final dailyClosures =
+        await ref.read(dailyClosureRepositoryProvider).getAll();
 
     final logsByDay = <String, List<DailyActivityLog>>{};
     for (final log in logs) {
       logsByDay.putIfAbsent(log.dayKey, () => []).add(log);
     }
+    final closuresByDay = {
+      for (final closure in dailyClosures) closure.dayKey: closure,
+    };
 
-    final firstDate = _firstRelevantDate(activities: activities, logs: logs);
+    final firstDate = _firstRelevantDate(
+      activities: activities,
+      logs: logs,
+      closures: dailyClosures,
+    );
     final today = DateTime.now();
     final normalizedToday = DateTime(today.year, today.month, today.day);
 
@@ -95,6 +111,11 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
                     entry.completionQuality ?? ActivityCompletionQuality.medium,
               )
               .toList();
+      final completedScores =
+          dayLogs
+              .where((entry) => entry.status == ActivityStatus.completed)
+              .map(_resolveQualityScore)
+              .toList();
       final qualityScore = completedQualities.fold<double>(
         0,
         (sum, quality) => sum + quality.weight,
@@ -102,6 +123,11 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
       final averageQualityRank = ActivityCompletionQualityX.averageRank(
         completedQualities,
       );
+      final averageQualityScore =
+          completedScores.isEmpty
+              ? 0.0
+              : completedScores.fold<int>(0, (sum, value) => sum + value) /
+                  completedScores.length;
 
       final summaries =
           dayLogs.map((entry) {
@@ -115,6 +141,10 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
               activityName: name,
               status: entry.status,
               completionQuality: entry.completionQuality,
+              qualityScore:
+                  entry.status == ActivityStatus.completed
+                      ? _resolveQualityScore(entry)
+                      : null,
             );
           }).toList();
 
@@ -125,7 +155,9 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
           totalPlanned: planSnapshot.totalPlanned,
           qualityScore: qualityScore,
           averageQualityRank: averageQualityRank,
+          averageQualityScore: averageQualityScore,
           items: summaries,
+          dailyClosure: closuresByDay[dayKey],
         ),
       );
     }
@@ -136,6 +168,7 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
   DateTime _firstRelevantDate({
     required List<Activity> activities,
     required List<DailyActivityLog> logs,
+    required List<DailyClosureEntry> closures,
   }) {
     final today = DateTime.now();
     var first = DateTime(today.year, today.month, today.day);
@@ -154,6 +187,26 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
       if (date.isBefore(first)) first = date;
     }
 
+    for (final closure in closures) {
+      final date = DateUtilsX.fromDayKey(closure.dayKey);
+      if (date.isBefore(first)) first = date;
+    }
+
     return first;
+  }
+
+  int _resolveQualityScore(DailyActivityLog log) {
+    if (log.qualityScore != null) {
+      return log.qualityScore!.clamp(0, 10).toInt();
+    }
+    final quality = log.completionQuality ?? ActivityCompletionQuality.medium;
+    switch (quality) {
+      case ActivityCompletionQuality.low:
+        return 4;
+      case ActivityCompletionQuality.medium:
+        return 7;
+      case ActivityCompletionQuality.high:
+        return 9;
+    }
   }
 }

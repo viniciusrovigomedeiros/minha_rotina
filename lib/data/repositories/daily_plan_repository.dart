@@ -10,7 +10,8 @@ class DailyPlanRepository {
     final values = LocalStorageService.dailyPlansBox.values;
     return values
         .map(
-          (entry) => DailyPlanSnapshot.fromMap(Map<String, dynamic>.from(entry)),
+          (entry) =>
+              DailyPlanSnapshot.fromMap(Map<String, dynamic>.from(entry)),
         )
         .toList()
       ..sort((a, b) => b.dayKey.compareTo(a.dayKey));
@@ -23,7 +24,10 @@ class DailyPlanRepository {
   }
 
   Future<void> save(DailyPlanSnapshot snapshot) async {
-    await LocalStorageService.dailyPlansBox.put(snapshot.dayKey, snapshot.toMap());
+    await LocalStorageService.dailyPlansBox.put(
+      snapshot.dayKey,
+      snapshot.toMap(),
+    );
   }
 
   Future<void> clear() async {

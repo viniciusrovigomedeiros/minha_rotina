@@ -9,6 +9,7 @@ import '../../core/utils/motivation_utils.dart';
 import '../models/activity.dart';
 import '../models/category.dart';
 import '../models/daily_activity_log.dart';
+import '../models/daily_closure_entry.dart';
 import '../models/daily_plan_snapshot.dart';
 import '../models/user_settings.dart';
 import '../models/weekly_goal.dart';
@@ -107,6 +108,7 @@ class JsonBackupService {
       final activitiesRaw = root['activities'];
       final dailyLogsRaw = root['dailyLogs'];
       final dailyPlansRaw = root['dailyPlans'];
+      final dailyClosuresRaw = root['dailyClosures'];
       final weeklyGoalsRaw = root['weeklyGoals'];
       final categoriesRaw = root['categories'];
       final userSettingsRaw = root['userSettings'];
@@ -150,6 +152,17 @@ class JsonBackupService {
                   .toList()
               : const <DailyPlanSnapshot>[];
 
+      final dailyClosures =
+          dailyClosuresRaw is List
+              ? dailyClosuresRaw
+                  .map(
+                    (entry) => DailyClosureEntry.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <DailyClosureEntry>[];
+
       final weeklyGoals =
           weeklyGoalsRaw is List
               ? weeklyGoalsRaw
@@ -183,6 +196,7 @@ class JsonBackupService {
       await _appDataRepository.replaceAll(
         activities: activities,
         dailyLogs: dailyLogs,
+        dailyClosures: dailyClosures,
         dailyPlans: dailyPlans,
         weeklyGoals: weeklyGoals,
         categories: categories,

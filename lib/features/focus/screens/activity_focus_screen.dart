@@ -37,64 +37,67 @@ class ActivityFocusScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                Text(
-                  activity.name,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  activity.description ?? 'Sem descrição detalhada.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  TimeFormat.formatMinutesRange(
-                    activity.startMinutes,
-                    activity.endMinutes,
+                  Text(
+                    activity.name,
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 10),
-                Text(phrase, style: Theme.of(context).textTheme.bodySmall),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      final quality = await showCompletionQualitySheet(context);
-                      if (quality == null) return;
-                      await ref
-                          .read(todayControllerProvider.notifier)
-                          .updateStatus(
-                            activityId: activity.id,
-                            status: ActivityStatus.completed,
-                            completionQuality: quality,
-                          );
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.check_circle_rounded),
-                    label: const Text('Concluir atividade'),
+                  const SizedBox(height: 12),
+                  Text(
+                    activity.description ?? 'Sem descrição detalhada.',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await ref
-                          .read(todayControllerProvider.notifier)
-                          .updateStatus(
-                            activityId: activity.id,
-                            status: ActivityStatus.skipped,
-                          );
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Pular hoje'),
+                  const SizedBox(height: 14),
+                  Text(
+                    TimeFormat.formatMinutesRange(
+                      activity.startMinutes,
+                      activity.endMinutes,
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  Text(phrase, style: Theme.of(context).textTheme.bodySmall),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        final quality = await showCompletionQualitySheet(
+                          context,
+                        );
+                        if (quality == null) return;
+                        await ref
+                            .read(todayControllerProvider.notifier)
+                            .updateStatus(
+                              activityId: activity.id,
+                              status: ActivityStatus.completed,
+                              completionQuality: quality.completionQuality,
+                              completionPayload: quality,
+                            );
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.check_circle_rounded),
+                      label: const Text('Concluir atividade'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await ref
+                            .read(todayControllerProvider.notifier)
+                            .updateStatus(
+                              activityId: activity.id,
+                              status: ActivityStatus.skipped,
+                            );
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop();
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('Pular hoje'),
+                    ),
+                  ),
                 ],
               ),
             ),

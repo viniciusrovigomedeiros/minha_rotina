@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../../core/utils/weekly_goal_progress_utils.dart';
 import '../../core/utils/motivation_utils.dart';
+import '../../core/utils/weekly_goal_progress_utils.dart';
 import '../models/activity.dart';
 import '../models/daily_activity_log.dart';
 import '../models/user_settings.dart';
@@ -189,6 +189,31 @@ class NotificationService {
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
       }
+    }
+
+    if (settings.dailyClosureReminderEnabled) {
+      final schedule = _nextDailyDate(settings.dailyClosureReminderMinutes);
+      await _plugin.zonedSchedule(
+        900000003,
+        'Fechamento diário',
+        'Antes de encerrar o dia, preencha seu diário.',
+        schedule,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'minha_rotina_daily_closure',
+            'Fechamento diário',
+            channelDescription:
+                'Lembrete para preencher o diário no final do dia',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
     }
   }
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/utils/time_format.dart';
-import '../../../data/models/activity_completion_quality.dart';
+import '../../../data/models/activity_completion_payload.dart';
 import '../../../data/models/activity_status.dart';
 import '../../../data/models/category.dart';
 import '../../../state/today_controller.dart';
@@ -21,7 +21,7 @@ class TodayActivityCard extends StatelessWidget {
 
   final TodayActivityItem item;
   final Category? category;
-  final Future<void> Function(ActivityCompletionQuality quality) onComplete;
+  final Future<void> Function(ActivityCompletionPayload completion) onComplete;
   final VoidCallback onSkip;
   final VoidCallback onReset;
   final VoidCallback onOpen;
@@ -84,9 +84,25 @@ class TodayActivityCard extends StatelessWidget {
                   if (status == ActivityStatus.completed &&
                       item.completionQuality != null) ...[
                     const SizedBox(height: 6),
-                    CompletionQualityChip(
-                      quality: item.completionQuality!,
-                      compact: true,
+                    Row(
+                      children: [
+                        CompletionQualityChip(
+                          quality: item.completionQuality!,
+                          compact: true,
+                        ),
+                        if (item.qualityScore != null) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '${item.qualityScore}/10',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                   if (hasDescription) ...[
@@ -138,7 +154,7 @@ class _StatusActionButton extends StatelessWidget {
   });
 
   final ActivityStatus status;
-  final Future<void> Function(ActivityCompletionQuality quality) onComplete;
+  final Future<void> Function(ActivityCompletionPayload completion) onComplete;
   final VoidCallback onSkip;
   final VoidCallback onReset;
 

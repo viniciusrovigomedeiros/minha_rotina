@@ -4,29 +4,15 @@ class MotivationUtils {
   const MotivationUtils._();
 
   static const List<String> defaultPhrases = [
-    'Stay hard.',
-    'Não pare quando estiver cansado. Pare quando terminar.',
-    'Quando sua mente diz que acabou, você ainda tem mais.',
-    'Seja incomum entre os incomuns.',
-    'A disciplina é a ponte entre quem você é e quem quer se tornar.',
-    'Ninguém virá te salvar. Faça o trabalho.',
-    'Treine sua mente para continuar quando for desconfortável.',
-    'Sem desculpas. Sem atalhos. Só execução.',
-    'A consistência diária vence qualquer explosão de motivação.',
-    'A mente pede descanso cedo. O propósito pede continuidade.',
-    'Você não precisa sentir vontade para agir.',
-    'Faça o difícil primeiro. O resto fica leve.',
-    'O desconforto é o preço da evolução.',
-    'A disciplina começa quando a empolgação acaba.',
-    'Resultados mudam quando o padrão sobe.',
-    'A rotina forte nasce de decisões simples repetidas.',
-    'Pare de negociar com a preguiça.',
-    'Controle o que você faz hoje e o futuro responde.',
-    'A melhor resposta é trabalho bem feito, todos os dias.',
-    'Seu limite atual é só um ponto de partida.',
-    'Sem drama. Sem barulho. Só progresso.',
-    'Faça o básico com excelência, todos os dias.',
-    'Você não precisa ser perfeito. Precisa ser constante.',
+    'Sempre que for tomar uma decisão se pergunte, se todo mundo tomasse essa decisão o mundo seria melhor ou pior?',
+    'Afinal de contas, o mundo é indiferente ao que nós, humanos, “queremos”. Se persistirmos em querer, em precisar, estaremos apenas nos condenando ao ressentimento, ou a algo ainda pior. Fazer nosso trabalho é o que basta.',
+    'Mude a definição de sucesso. “O sucesso é a paz de espírito, que é um resultado direto da satisfação consigo mesmo por saber que você se esforçou para dar o seu melhor em se tornar o melhor que é capaz de ser.”',
+    'Faça seu trabalho. E o faça bem. Então, “relaxe e deixe Deus agir”. Isso é tudo que é preciso.',
+    '“Primeiro diga a si mesmo o que você seria; e então faça o que você tem que fazer.” – Epicteto.',
+    '“Algumas coisas estão sob nosso controle, outras não.” — Epicteto',
+    '“Você tem direito ao trabalho, mas não aos frutos do trabalho.” — Bhagavad Gita',
+    '“O sucesso é paz de espírito, resultado direto da satisfação de saber que você fez o seu melhor.”',
+    '“Se um homem é chamado para ser varredor de rua, deve varrer ruas como Michelangelo pintava.” — Martin Luther King Jr.',
   ];
 
   static String greetingByTime(DateTime now) {

@@ -1,12 +1,14 @@
 import '../models/activity.dart';
 import '../models/category.dart';
 import '../models/daily_activity_log.dart';
+import '../models/daily_closure_entry.dart';
 import '../models/daily_plan_snapshot.dart';
 import '../models/user_settings.dart';
 import '../models/weekly_goal.dart';
 import 'activity_repository.dart';
 import 'category_repository.dart';
 import 'daily_log_repository.dart';
+import 'daily_closure_repository.dart';
 import 'daily_plan_repository.dart';
 import 'motivation_phrase_repository.dart';
 import 'user_settings_repository.dart';
@@ -16,6 +18,7 @@ class AppDataSnapshot {
   const AppDataSnapshot({
     required this.activities,
     required this.dailyLogs,
+    required this.dailyClosures,
     required this.dailyPlans,
     required this.weeklyGoals,
     required this.categories,
@@ -26,6 +29,7 @@ class AppDataSnapshot {
 
   final List<Activity> activities;
   final List<DailyActivityLog> dailyLogs;
+  final List<DailyClosureEntry> dailyClosures;
   final List<DailyPlanSnapshot> dailyPlans;
   final List<WeeklyGoal> weeklyGoals;
   final List<Category> categories;
@@ -38,6 +42,7 @@ class AppDataSnapshot {
       'meta': {'version': 1, 'exportedAt': exportedAt.toIso8601String()},
       'activities': activities.map((e) => e.toMap()).toList(),
       'dailyLogs': dailyLogs.map((e) => e.toMap()).toList(),
+      'dailyClosures': dailyClosures.map((e) => e.toMap()).toList(),
       'dailyPlans': dailyPlans.map((e) => e.toMap()).toList(),
       'weeklyGoals': weeklyGoals.map((e) => e.toMap()).toList(),
       'categories': categories.map((e) => e.toMap()).toList(),
@@ -51,6 +56,7 @@ class AppDataRepository {
   AppDataRepository({
     required ActivityRepository activityRepository,
     required DailyLogRepository dailyLogRepository,
+    required DailyClosureRepository dailyClosureRepository,
     required DailyPlanRepository dailyPlanRepository,
     required WeeklyGoalRepository weeklyGoalRepository,
     required CategoryRepository categoryRepository,
@@ -58,6 +64,7 @@ class AppDataRepository {
     required MotivationPhraseRepository motivationPhraseRepository,
   }) : _activityRepository = activityRepository,
        _dailyLogRepository = dailyLogRepository,
+       _dailyClosureRepository = dailyClosureRepository,
        _dailyPlanRepository = dailyPlanRepository,
        _weeklyGoalRepository = weeklyGoalRepository,
        _categoryRepository = categoryRepository,
@@ -66,6 +73,7 @@ class AppDataRepository {
 
   final ActivityRepository _activityRepository;
   final DailyLogRepository _dailyLogRepository;
+  final DailyClosureRepository _dailyClosureRepository;
   final DailyPlanRepository _dailyPlanRepository;
   final WeeklyGoalRepository _weeklyGoalRepository;
   final CategoryRepository _categoryRepository;
@@ -75,6 +83,7 @@ class AppDataRepository {
   Future<AppDataSnapshot> snapshot() async {
     final activities = await _activityRepository.getAll();
     final dailyLogs = await _dailyLogRepository.getAll();
+    final dailyClosures = await _dailyClosureRepository.getAll();
     final dailyPlans = await _dailyPlanRepository.getAll();
     final weeklyGoals = await _weeklyGoalRepository.getAll();
     final categories = await _categoryRepository.getAll();
@@ -84,6 +93,7 @@ class AppDataRepository {
     return AppDataSnapshot(
       activities: activities,
       dailyLogs: dailyLogs,
+      dailyClosures: dailyClosures,
       dailyPlans: dailyPlans,
       weeklyGoals: weeklyGoals,
       categories: categories,
@@ -96,6 +106,7 @@ class AppDataRepository {
   Future<void> replaceAll({
     required List<Activity> activities,
     required List<DailyActivityLog> dailyLogs,
+    required List<DailyClosureEntry> dailyClosures,
     required List<DailyPlanSnapshot> dailyPlans,
     required List<WeeklyGoal> weeklyGoals,
     required List<Category> categories,
@@ -104,6 +115,7 @@ class AppDataRepository {
   }) async {
     await _activityRepository.clear();
     await _dailyLogRepository.clear();
+    await _dailyClosureRepository.clear();
     await _dailyPlanRepository.clear();
     await _weeklyGoalRepository.clear();
     await _categoryRepository.clear();
@@ -122,6 +134,9 @@ class AppDataRepository {
     for (final log in dailyLogs) {
       await _dailyLogRepository.saveLog(log);
     }
+    for (final closure in dailyClosures) {
+      await _dailyClosureRepository.save(closure);
+    }
     for (final plan in dailyPlans) {
       await _dailyPlanRepository.save(plan);
     }
@@ -135,6 +150,7 @@ class AppDataRepository {
   Future<void> clearAll() async {
     await _activityRepository.clear();
     await _dailyLogRepository.clear();
+    await _dailyClosureRepository.clear();
     await _dailyPlanRepository.clear();
     await _weeklyGoalRepository.clear();
     await _categoryRepository.clear();

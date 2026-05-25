@@ -99,12 +99,34 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
     );
   }
 
+  Future<void> updateDailyClosureReminderEnabled(bool value) async {
+    final current = state.value;
+    if (current == null) return;
+    await _save(
+      current.copyWith(
+        dailyClosureReminderEnabled: value,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
   Future<void> updateBedtimeMotivationMinutes(int minutes) async {
     final current = state.value;
     if (current == null) return;
     await _save(
       current.copyWith(
         bedtimeMotivationMinutes: minutes,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> updateDailyClosureReminderMinutes(int minutes) async {
+    final current = state.value;
+    if (current == null) return;
+    await _save(
+      current.copyWith(
+        dailyClosureReminderMinutes: minutes,
         updatedAt: DateTime.now(),
       ),
     );

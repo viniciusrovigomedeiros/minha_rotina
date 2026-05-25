@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/models/activity_completion_quality.dart';
 import '../../../data/models/activity.dart';
 import '../../../data/models/category.dart';
 import '../../../state/activities_controller.dart';
@@ -49,12 +48,10 @@ class DashboardScreen extends ConsumerWidget {
           error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
           data: (state) {
             final weekPercent = (state.weekProgress * 100).round();
-            final averageQualityLabel =
+            final weeklyQualityValue =
                 state.totalCompleted == 0
                     ? 'Sem dados'
-                    : ActivityCompletionQualityX.averageLabel(
-                      state.averageQualityRank,
-                    );
+                    : '${state.averageQualityScore.toStringAsFixed(1)}/10';
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -71,42 +68,55 @@ class DashboardScreen extends ConsumerWidget {
                     runSpacing: 10,
                     children: [
                       _MetricCard(
-                        title: 'Progresso semana',
-                        value: '$weekPercent%',
-                        subtitle:
-                            '${state.totalCompleted}/${state.totalPlanned}',
-                      ),
-                      _MetricCard(
-                        title: 'Concluídas',
-                        value: '${state.totalCompleted}',
-                        subtitle: 'Últimos 7 dias',
-                      ),
-                      _MetricCard(
-                        title: 'Pontos da semana',
-                        value: state.totalQualityScore.toStringAsFixed(1),
-                        subtitle: 'Peso com qualidade',
-                      ),
-                      _MetricCard(
-                        title: 'Melhor dia',
-                        value: _capitalize(state.bestDayLabel),
-                        subtitle: 'Maior percentual',
-                      ),
-                      _MetricCard(
-                        title: 'Qualidade média',
-                        value: averageQualityLabel,
+                        title: 'Média de qualidade (semana)',
+                        value: weeklyQualityValue,
                         subtitle:
                             state.totalCompleted == 0
-                                ? 'Sem concluídas'
-                                : '${state.averageQualityRank.toStringAsFixed(1)}/3',
+                                ? 'Conclua tarefas com nota para calcular'
+                                : 'Foco na execução, não no volume',
                       ),
                       _MetricCard(
-                        title: 'Sequência atual',
-                        value: '${state.currentStreak} dia(s)',
-                        subtitle: 'Com pelo menos 1 concluída',
+                        title: 'Dias com fechamento diário',
+                        value: '${state.daysWithDailyClosure}/7',
+                        subtitle: 'Diário de reflexão concluído',
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Resultados (secundário)',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _SmallSecondaryTag(
+                                label: 'Concluídas',
+                                value: '${state.totalCompleted}',
+                              ),
+                              _SmallSecondaryTag(
+                                label: 'Planejadas',
+                                value: '${state.totalPlanned}',
+                              ),
+                              _SmallSecondaryTag(
+                                label: 'Progresso',
+                                value: '$weekPercent%',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -372,11 +382,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  String _capitalize(String text) {
-    if (text.isEmpty) return text;
-    return text.substring(0, 1).toUpperCase() + text.substring(1);
-  }
-
   String _scopeLabel(
     WeeklyGoal goal,
     List<Activity> activities,
@@ -400,6 +405,28 @@ class DashboardScreen extends ConsumerWidget {
       case null:
         return 'Geral';
     }
+  }
+}
+
+class _SmallSecondaryTag extends StatelessWidget {
+  const _SmallSecondaryTag({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+    );
   }
 }
 

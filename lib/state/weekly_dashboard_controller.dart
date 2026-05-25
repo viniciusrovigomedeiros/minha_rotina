@@ -43,6 +43,8 @@ class WeeklyDashboardState {
     required this.totalPlanned,
     required this.totalQualityScore,
     required this.averageQualityRank,
+    required this.averageQualityScore,
+    required this.daysWithDailyClosure,
     required this.bestDayLabel,
     required this.currentStreak,
   });
@@ -53,6 +55,8 @@ class WeeklyDashboardState {
   final int totalPlanned;
   final double totalQualityScore;
   final double averageQualityRank;
+  final double averageQualityScore;
+  final int daysWithDailyClosure;
   final String bestDayLabel;
   final int currentStreak;
 
@@ -84,6 +88,8 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
     final activities = await ref.read(activityRepositoryProvider).getAll();
     final categories = await ref.read(categoryRepositoryProvider).getAll();
     final logs = await ref.read(dailyLogRepositoryProvider).getAll();
+    final dailyClosures =
+        await ref.read(dailyClosureRepositoryProvider).getAll();
     final dailyPlanRepository = ref.read(dailyPlanRepositoryProvider);
 
     final logsByDay = <String, List<DailyActivityLog>>{};
@@ -98,6 +104,7 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
     int totalPlanned = 0;
     double totalQualityScore = 0;
     final completedQualities = <ActivityCompletionQuality>[];
+    final completedScores = <int>[];
 
     for (int i = 0; i < 7; i++) {
       final date = start.add(Duration(days: i));
@@ -122,6 +129,7 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
             completedLog.completionQuality ?? ActivityCompletionQuality.medium;
         completedQualities.add(quality);
         totalQualityScore += quality.weight;
+        completedScores.add(_resolveQualityScore(completedLog));
       }
 
       for (final completedLog in completedLogs) {
@@ -183,6 +191,13 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
       }
     }
 
+    final dailyClosureDaysInRange =
+        dailyClosures.where((entry) {
+          final date = DateUtilsX.fromDayKey(entry.dayKey);
+          final normalized = DateTime(date.year, date.month, date.day);
+          return !normalized.isBefore(start) && !normalized.isAfter(end);
+        }).length;
+
     return WeeklyDashboardState(
       dailyPoints: points,
       categoryPoints: categoryPoints,
@@ -192,11 +207,32 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
       averageQualityRank: ActivityCompletionQualityX.averageRank(
         completedQualities,
       ),
+      averageQualityScore:
+          completedScores.isEmpty
+              ? 0
+              : completedScores.fold<int>(0, (sum, value) => sum + value) /
+                  completedScores.length,
+      daysWithDailyClosure: dailyClosureDaysInRange,
       bestDayLabel:
           bestDay == null
               ? 'Sem dados'
               : DateFormat('EEEE', 'pt_BR').format(bestDay.date),
       currentStreak: streak,
     );
+  }
+
+  int _resolveQualityScore(DailyActivityLog log) {
+    if (log.qualityScore != null) {
+      return log.qualityScore!.clamp(0, 10).toInt();
+    }
+    final quality = log.completionQuality ?? ActivityCompletionQuality.medium;
+    switch (quality) {
+      case ActivityCompletionQuality.low:
+        return 4;
+      case ActivityCompletionQuality.medium:
+        return 7;
+      case ActivityCompletionQuality.high:
+        return 9;
+    }
   }
 }

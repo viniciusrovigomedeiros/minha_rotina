@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/date_utils.dart';
+import '../../../data/models/daily_closure_entry.dart';
 import '../../../data/models/activity_status.dart';
 import '../../shared/widgets/completion_quality_sheet.dart';
-import '../../../state/activities_controller.dart';
+import '../../shared/widgets/daily_closure_sheet.dart';
+import '../../../state/daily_closures_controller.dart';
 import '../../../state/history_controller.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -29,303 +31,336 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(historyControllerProvider);
-    final activitiesAsync = ref.watch(activitiesControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Histórico')),
+      appBar: AppBar(title: const Text('Revisão')),
       body: SafeArea(
         top: false,
         child: historyAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
           data: (days) {
-          return activitiesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error:
-                (error, _) => Center(child: Text('Erro ao carregar: $error')),
-            data: (activities) {
-              final firstDate =
-                  days.isEmpty
-                      ? DateTime.now().subtract(const Duration(days: 365))
-                      : DateUtilsX.fromDayKey(days.last.dayKey);
-              final lastDate = DateTime.now();
-              final selectedDate = _clampDate(
-                _selectedDate,
-                _normalize(firstDate),
-                _normalize(lastDate),
-              );
-              final selectedDayKey = DateUtilsX.toDayKey(selectedDate);
-              final selectedSummary =
-                  days.where((day) => day.dayKey == selectedDayKey).toList();
+            final firstDate =
+                days.isEmpty
+                    ? DateTime.now().subtract(const Duration(days: 365))
+                    : DateUtilsX.fromDayKey(days.last.dayKey);
+            final lastDate = DateTime.now();
+            final selectedDate = _clampDate(
+              _selectedDate,
+              _normalize(firstDate),
+              _normalize(lastDate),
+            );
+            final selectedDayKey = DateUtilsX.toDayKey(selectedDate);
+            final selectedSummary =
+                days.where((day) => day.dayKey == selectedDayKey).toList();
 
-              final summary =
-                  selectedSummary.isEmpty ? null : selectedSummary.first;
+            final summary =
+                selectedSummary.isEmpty ? null : selectedSummary.first;
 
-              final plannedForSelectedDay = summary?.totalPlanned ?? 0;
+            final plannedForSelectedDay = summary?.totalPlanned ?? 0;
+            final completedOnSelected = summary?.completed ?? 0;
+            final completionRate =
+                plannedForSelectedDay == 0
+                    ? 0.0
+                    : completedOnSelected / plannedForSelectedDay;
+            final selectedDayAverageQualityScore =
+                summary == null || summary.completed == 0
+                    ? 0.0
+                    : summary.averageQualityScore;
 
-              final completedOnSelected = summary?.completed ?? 0;
-              final skippedOnSelected =
-                  summary?.items
-                      .where((item) => item.status == ActivityStatus.skipped)
-                      .length ??
-                  0;
-              final completionRate =
-                  plannedForSelectedDay == 0
-                      ? 0.0
-                      : completedOnSelected / plannedForSelectedDay;
-              final selectedDayAverageQuality =
-                  summary == null || summary.completed == 0
-                      ? 0.0
-                      : summary.averageQualityRank;
+            final weeklySummary = _buildWeeklyLearningSummary(days);
 
-              final totalCompletedHistory = days.fold<int>(
-                0,
-                (sum, day) => sum + day.completed,
-              );
-              final totalQualityScoreHistory = days.fold<double>(
-                0,
-                (sum, day) => sum + day.qualityScore,
-              );
-              final totalSkippedHistory = days.fold<int>(
-                0,
-                (sum, day) =>
-                    sum +
-                    day.items
-                        .where((item) => item.status == ActivityStatus.skipped)
-                        .length,
-              );
-              final historyQualityAverage =
-                  totalCompletedHistory == 0
-                      ? 0.0
-                      : days.fold<double>(
-                            0,
-                            (sum, day) =>
-                                sum + (day.averageQualityRank * day.completed),
-                          ) /
-                          totalCompletedHistory;
-
-              return RefreshIndicator(
-                onRefresh:
-                    () => ref.read(historyControllerProvider.notifier).reload(),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  children: [
-                    _CompactHistoryCalendar(
-                      selectedDate: selectedDate,
-                      firstDate: _normalize(firstDate),
-                      lastDate: _normalize(lastDate),
-                      windowStart: _windowStart,
-                      onDateSelected: (date) {
-                        setState(() => _selectedDate = _normalize(date));
-                      },
-                      onPreviousWeek: () {
-                        setState(() {
-                          _windowStart = _windowStart.subtract(
-                            const Duration(days: 7),
-                          );
-                        });
-                      },
-                      onNextWeek: () {
-                        setState(() {
-                          _windowStart = _windowStart.add(
-                            const Duration(days: 7),
-                          );
-                        });
-                      },
-                      onExpand: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          locale: const Locale('pt', 'BR'),
-                          initialDate: selectedDate,
-                          firstDate: _normalize(firstDate),
-                          lastDate: _normalize(lastDate),
-                        );
-                        if (picked == null) return;
-                        final normalized = _normalize(picked);
-                        setState(() {
-                          _selectedDate = normalized;
-                          _windowStart = _startOfWeek(
-                            normalized,
-                          ).subtract(const Duration(days: 7));
-                        });
-                      },
+            return RefreshIndicator(
+              onRefresh:
+                  () => ref.read(historyControllerProvider.notifier).reload(),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                children: [
+                  Text(
+                    'Revise um dia por vez para ajustar o padrão da execução.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
                     ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _formatDate(selectedDate),
-                              style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  _CompactHistoryCalendar(
+                    selectedDate: selectedDate,
+                    firstDate: _normalize(firstDate),
+                    lastDate: _normalize(lastDate),
+                    windowStart: _windowStart,
+                    onDateSelected: (date) {
+                      setState(() => _selectedDate = _normalize(date));
+                    },
+                    onPreviousWeek: () {
+                      setState(() {
+                        _windowStart = _windowStart.subtract(
+                          const Duration(days: 7),
+                        );
+                      });
+                    },
+                    onNextWeek: () {
+                      setState(() {
+                        _windowStart = _windowStart.add(
+                          const Duration(days: 7),
+                        );
+                      });
+                    },
+                    onExpand: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        locale: const Locale('pt', 'BR'),
+                        initialDate: selectedDate,
+                        firstDate: _normalize(firstDate),
+                        lastDate: _normalize(lastDate),
+                      );
+                      if (picked == null) return;
+                      final normalized = _normalize(picked);
+                      setState(() {
+                        _selectedDate = normalized;
+                        _windowStart = _startOfWeek(
+                          normalized,
+                        ).subtract(const Duration(days: 7));
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Aprendizados da semana',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Média de qualidade da semana: ${weeklySummary.averageQualityLabel}.',
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Dias com fechamento diário: ${weeklySummary.daysWithClosure}/7.',
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Ajuste mais recente para amanhã: ${weeklySummary.latestImprovement}.',
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Use este resumo para decidir o foco da próxima semana.',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$completedOnSelected concluídas de $plannedForSelectedDay planejadas',
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                minHeight: 8,
-                                value: completionRate.clamp(0, 1),
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.18),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Theme.of(context).colorScheme.primary,
-                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Execução do dia',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _formatDate(selectedDate),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$completedOnSelected concluídas de $plannedForSelectedDay planejadas',
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            summary == null || summary.completed == 0
+                                ? 'Qualidade média do dia: sem dados'
+                                : 'Qualidade média do dia: ${selectedDayAverageQualityScore.toStringAsFixed(1)}/10',
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              minHeight: 8,
+                              value: completionRate.clamp(0, 1),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.18),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.primary,
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${(completionRate * 100).round()}% de conclusão',
-                            ),
-                            const SizedBox(height: 12),
-                            if (summary == null || summary.items.isEmpty)
-                              const Text(
-                                'Sem registros neste dia. Marque atividades no painel Hoje para aparecer aqui.',
-                              )
-                            else
-                              ...summary.items.map(
-                                (item) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        _iconFor(item.status.name),
-                                        size: 16,
-                                        color: _colorFor(
-                                          context,
-                                          item.status.name,
-                                        ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${(completionRate * 100).round()}% de conclusão',
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Tarefas do dia',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          if (summary == null || summary.items.isEmpty)
+                            const Text(
+                              'Sem registros neste dia. Marque atividades no painel Hoje para aparecer aqui.',
+                            )
+                          else
+                            ...summary.items.map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      _iconFor(item.status.name),
+                                      size: 16,
+                                      color: _colorFor(
+                                        context,
+                                        item.status.name,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                item.activityName,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              item.activityName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          if (item.status ==
+                                                  ActivityStatus.completed &&
+                                              item.completionQuality != null)
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                CompletionQualityChip(
+                                                  quality:
+                                                      item.completionQuality!,
+                                                  compact: true,
+                                                ),
+                                                if (item.qualityScore !=
+                                                    null) ...[
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    '${item.qualityScore}/10',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .labelSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ],
+                                            )
+                                          else
+                                            Text(
+                                              '—',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.labelSmall?.copyWith(
+                                                color:
+                                                    Theme.of(
+                                                      context,
+                                                    ).colorScheme.outline,
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
-                                            if (item.status ==
-                                                    ActivityStatus.completed &&
-                                                item.completionQuality != null)
-                                              CompletionQualityChip(
-                                                quality:
-                                                    item.completionQuality!,
-                                                compact: true,
-                                              )
-                                            else
-                                              Text(
-                                                '—',
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.labelSmall
-                                                    ?.copyWith(
-                                                      color:
-                                                          Theme.of(
-                                                            context,
-                                                          ).colorScheme.outline,
-                                                    ),
-                                              ),
-                                          ],
-                                        ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Fechamento diário',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed:
+                                    () => _openDailyClosureSheet(
+                                      context: context,
+                                      dayKey: selectedDayKey,
+                                      existing: summary?.dailyClosure,
+                                    ),
+                                child: Text(
+                                  summary?.dailyClosure == null
+                                      ? 'Registrar'
+                                      : 'Editar',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (summary?.dailyClosure == null)
+                            const Text(
+                              'Registre em 2 minutos: melhor entrega, onde perdeu padrão e o ajuste para amanhã.',
+                            )
+                          else ...[
                             Text(
-                              'Totalizador',
-                              style: Theme.of(context).textTheme.titleMedium,
+                              'Reflexão registrada para este dia.',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
                             ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _MetricTag(
-                                  label: 'Concluídas (dia)',
-                                  value: '$completedOnSelected',
-                                ),
-                                _MetricTag(
-                                  label: 'Puladas (dia)',
-                                  value: '$skippedOnSelected',
-                                ),
-                                _MetricTag(
-                                  label: 'Planejadas (dia)',
-                                  value: '$plannedForSelectedDay',
-                                ),
-                                _MetricTag(
-                                  label: 'Concluídas (histórico)',
-                                  value: '$totalCompletedHistory',
-                                ),
-                                _MetricTag(
-                                  label: 'Pontos (dia)',
-                                  value:
-                                      summary == null
-                                          ? '0.0'
-                                          : summary.qualityScore
-                                              .toStringAsFixed(1),
-                                ),
-                                _MetricTag(
-                                  label: 'Pontos (histórico)',
-                                  value: totalQualityScoreHistory
-                                      .toStringAsFixed(1),
-                                ),
-                                _MetricTag(
-                                  label: 'Qualidade média (dia)',
-                                  value:
-                                      summary == null || summary.completed == 0
-                                          ? 'Sem dados'
-                                          : '${selectedDayAverageQuality.toStringAsFixed(1)}/3',
-                                ),
-                                _MetricTag(
-                                  label: 'Qualidade média (histórico)',
-                                  value:
-                                      totalCompletedHistory == 0
-                                          ? 'Sem dados'
-                                          : '${historyQualityAverage.toStringAsFixed(1)}/3',
-                                ),
-                                _MetricTag(
-                                  label: 'Puladas (histórico)',
-                                  value: '$totalSkippedHistory',
-                                ),
-                                _MetricTag(
-                                  label: 'Dias com registro',
-                                  value: '${days.length}',
-                                ),
-                              ],
+                            const SizedBox(height: 8),
+                            _DailyClosureRow(
+                              label: 'O que ficou excelente?',
+                              value: summary!.dailyClosure!.bestWork,
+                            ),
+                            const SizedBox(height: 8),
+                            _DailyClosureRow(
+                              label: 'Perda de padrão',
+                              value: summary.dailyClosure!.lostStandard,
+                            ),
+                            const SizedBox(height: 8),
+                            _DailyClosureRow(
+                              label: 'O que melhorar amanhã?',
+                              value:
+                                  summary.dailyClosure!.improvementForTomorrow,
                             ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          );
+                  ),
+                ],
+              ),
+            );
           },
         ),
       ),
@@ -372,6 +407,92 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         return scheme.outline;
     }
   }
+
+  Future<void> _openDailyClosureSheet({
+    required BuildContext context,
+    required String dayKey,
+    required DailyClosureEntry? existing,
+  }) async {
+    final result = await showDailyClosureSheet(
+      context: context,
+      existing: existing,
+    );
+
+    if (result == null) return;
+
+    await ref
+        .read(dailyClosuresControllerProvider.notifier)
+        .saveForDay(
+          dayKey: dayKey,
+          bestWork: result.bestWork,
+          lostStandard: result.lostStandard,
+          improvementForTomorrow: result.improvementForTomorrow,
+        );
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fechamento diário salvo.'),
+        duration: Duration(milliseconds: 1200),
+      ),
+    );
+  }
+
+  _WeeklyLearningSummary _buildWeeklyLearningSummary(
+    List<HistoryDaySummary> days,
+  ) {
+    final week = days.take(7).toList();
+    if (week.isEmpty) {
+      return const _WeeklyLearningSummary(
+        averageQualityLabel: 'sem dados',
+        daysWithClosure: 0,
+        latestImprovement: 'sem registros',
+      );
+    }
+
+    final completedInWeek = week.fold<int>(
+      0,
+      (sum, day) => sum + day.completed,
+    );
+    final averageQuality =
+        completedInWeek == 0
+            ? 0.0
+            : week.fold<double>(
+                  0,
+                  (sum, day) => sum + (day.averageQualityScore * day.completed),
+                ) /
+                completedInWeek;
+
+    final closures = week.where((day) => day.dailyClosure != null).toList();
+    final latestClosure =
+        closures.isEmpty
+            ? null
+            : closures.first.dailyClosure?.improvementForTomorrow;
+
+    return _WeeklyLearningSummary(
+      averageQualityLabel:
+          completedInWeek == 0
+              ? 'sem dados'
+              : '${averageQuality.toStringAsFixed(1)}/10',
+      daysWithClosure: closures.length,
+      latestImprovement:
+          (latestClosure == null || latestClosure.trim().isEmpty)
+              ? 'sem registros'
+              : latestClosure,
+    );
+  }
+}
+
+class _WeeklyLearningSummary {
+  const _WeeklyLearningSummary({
+    required this.averageQualityLabel,
+    required this.daysWithClosure,
+    required this.latestImprovement,
+  });
+
+  final String averageQualityLabel;
+  final int daysWithClosure;
+  final String latestImprovement;
 }
 
 class _CompactHistoryCalendar extends StatelessWidget {
@@ -422,7 +543,7 @@ class _CompactHistoryCalendar extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Calendário  $rangeLabel',
+                    'Selecione o dia  •  $rangeLabel',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -527,34 +648,26 @@ class _CompactHistoryCalendar extends StatelessWidget {
   }
 }
 
-class _MetricTag extends StatelessWidget {
-  const _MetricTag({required this.label, required this.value});
+class _DailyClosureRow extends StatelessWidget {
+  const _DailyClosureRow({required this.label, required this.value});
 
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 2),
+        Text(value, style: Theme.of(context).textTheme.bodyMedium),
+      ],
     );
   }
 }

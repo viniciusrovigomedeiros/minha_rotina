@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/services/local_storage_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/time_of_day_utils.dart';
 import '../../../state/activities_controller.dart';
-import '../../../state/categories_controller.dart';
+import '../../../state/daily_closures_controller.dart';
 import '../../../state/history_controller.dart';
-import '../../../state/motivation_phrases_controller.dart';
 import '../../../state/providers.dart';
 import '../../../state/today_controller.dart';
 import '../../../state/user_settings_controller.dart';
+import '../../../state/weekly_dashboard_controller.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -20,62 +19,36 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final _nameController = TextEditingController();
-  final _newPhraseController = TextEditingController();
   bool _isBusy = false;
-  bool _didLoadInitialName = false;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _newPhraseController.dispose();
-    super.dispose();
-  }
+  bool _showBackupTools = false;
 
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(userSettingsControllerProvider);
-    final phrasesAsync = ref.watch(motivationPhrasesControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Configurações')),
+      appBar: AppBar(title: const Text('Ajustes')),
       body: SafeArea(
         top: false,
         child: settingsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
           data: (settings) {
-            final phrases = phrasesAsync.valueOrNull ?? const <String>[];
-
-            if (!_didLoadInitialName) {
-              _nameController.text = settings.userName;
-              _didLoadInitialName = true;
-            }
-
             return ListView(
               padding: const EdgeInsets.all(20),
               children: [
                 Text(
-                  'Nome para saudação',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  'Tema',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(hintText: 'Ex: Ronald'),
-                  onSubmitted: (_) => _saveName(),
-                ),
-                const SizedBox(height: 10),
-                FilledButton(
-                  onPressed: _isBusy ? null : _saveName,
-                  child: const Text('Salvar nome'),
-                ),
-                const SizedBox(height: 24),
-                Text('Tema', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(
-                  'Escolha a paleta principal do app.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  'Escolha a cor principal do aplicativo.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -85,11 +58,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     for (final option in AppTheme.options)
                       ChoiceChip(
                         selected: settings.themeKey == option.key,
-                        onSelected: (_) async {
-                          await ref
-                              .read(userSettingsControllerProvider.notifier)
-                              .updateThemeKey(option.key);
-                        },
+                        onSelected:
+                            _isBusy
+                                ? null
+                                : (_) async {
+                                  await ref
+                                      .read(
+                                        userSettingsControllerProvider.notifier,
+                                      )
+                                      .updateThemeKey(option.key);
+                                },
                         avatar: Container(
                           width: 12,
                           height: 12,
@@ -105,7 +83,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 24),
                 Text(
                   'Notificações',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Card(
@@ -126,6 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle:
                             'Controle geral de todos os lembretes do app.',
                         value: settings.notificationsEnabled,
+                        enabled: !_isBusy,
                         onChanged: (value) async {
                           await ref
                               .read(userSettingsControllerProvider.notifier)
@@ -138,7 +119,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle:
                             'Notifica atividades com horário inicial e lembrete ativo.',
                         value: settings.activityReminderNotificationsEnabled,
-                        enabled: settings.notificationsEnabled,
+                        enabled: settings.notificationsEnabled && !_isBusy,
                         onChanged: (value) async {
                           await ref
                               .read(userSettingsControllerProvider.notifier)
@@ -151,7 +132,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle:
                             'Envia um lembrete diário para revisar o andamento das metas ativas.',
                         value: settings.goalReminderNotificationsEnabled,
-                        enabled: settings.notificationsEnabled,
+                        enabled: settings.notificationsEnabled && !_isBusy,
                         onChanged: (value) async {
                           await ref
                               .read(userSettingsControllerProvider.notifier)
@@ -168,7 +149,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         enabled:
                             settings.notificationsEnabled &&
-                            settings.goalReminderNotificationsEnabled,
+                            settings.goalReminderNotificationsEnabled &&
+                            !_isBusy,
                         onTap: () async {
                           final picked = await showTimePicker(
                             context: context,
@@ -190,7 +172,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle:
                             'Antes de dormir, envia uma frase para te preparar para o próximo dia.',
                         value: settings.bedtimeMotivationEnabled,
-                        enabled: settings.notificationsEnabled,
+                        enabled: settings.notificationsEnabled && !_isBusy,
                         onChanged: (value) async {
                           await ref
                               .read(userSettingsControllerProvider.notifier)
@@ -207,7 +189,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         enabled:
                             settings.notificationsEnabled &&
-                            settings.bedtimeMotivationEnabled,
+                            settings.bedtimeMotivationEnabled &&
+                            !_isBusy,
                         onTap: () async {
                           final picked = await showTimePicker(
                             context: context,
@@ -223,216 +206,106 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               );
                         },
                       ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsSwitchRow(
+                        title: 'Lembrete de fechamento diário',
+                        subtitle:
+                            'No fim do dia, lembra de preencher o diário de reflexão.',
+                        value: settings.dailyClosureReminderEnabled,
+                        enabled: settings.notificationsEnabled && !_isBusy,
+                        onChanged: (value) async {
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateDailyClosureReminderEnabled(value);
+                        },
+                      ),
+                      const Divider(height: 1, thickness: 1),
+                      _SettingsTimeRow(
+                        title: 'Horário do fechamento diário',
+                        value: TimeOfDayUtils.format(
+                          TimeOfDayUtils.fromMinutes(
+                            settings.dailyClosureReminderMinutes,
+                          ),
+                        ),
+                        enabled:
+                            settings.notificationsEnabled &&
+                            settings.dailyClosureReminderEnabled &&
+                            !_isBusy,
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDayUtils.fromMinutes(
+                              settings.dailyClosureReminderMinutes,
+                            ),
+                          );
+                          if (picked == null) return;
+                          await ref
+                              .read(userSettingsControllerProvider.notifier)
+                              .updateDailyClosureReminderMinutes(
+                                TimeOfDayUtils.toMinutes(picked),
+                              );
+                        },
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Frases motivacionais',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Escolha se a frase muda todo dia ou se fica fixa.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Automático'),
-                      selected: settings.motivationPhraseMode != 'fixed',
-                      onSelected: (_) async {
-                        await ref
-                            .read(userSettingsControllerProvider.notifier)
-                            .updateMotivationPhraseMode('daily');
-                      },
-                    ),
-                    ChoiceChip(
-                      label: const Text('Fixa'),
-                      selected: settings.motivationPhraseMode == 'fixed',
-                      onSelected:
-                          phrases.isEmpty
-                              ? null
-                              : (_) async {
-                                await ref
-                                    .read(
-                                      userSettingsControllerProvider.notifier,
-                                    )
-                                    .updateMotivationPhraseMode('fixed');
-                                final selectedPhrase =
-                                    settings.fixedMotivationPhrase;
-                                if (selectedPhrase == null ||
-                                    !phrases.contains(selectedPhrase)) {
-                                  await ref
-                                      .read(
-                                        userSettingsControllerProvider.notifier,
-                                      )
-                                      .updateFixedMotivationPhrase(
-                                        phrases.first,
-                                      );
-                                }
-                              },
-                    ),
-                  ],
-                ),
-                if (settings.motivationPhraseMode == 'fixed') ...[
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value:
-                        (settings.fixedMotivationPhrase != null &&
-                                phrases.contains(
-                                  settings.fixedMotivationPhrase,
-                                ))
-                            ? settings.fixedMotivationPhrase
-                            : (phrases.isEmpty ? null : phrases.first),
-                    items:
-                        phrases
-                            .map(
-                              (phrase) => DropdownMenuItem(
-                                value: phrase,
-                                child: Text(
-                                  phrase,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                    decoration: const InputDecoration(
-                      labelText: 'Frase fixa selecionada',
-                    ),
-                    onChanged:
-                        phrases.isEmpty
-                            ? null
-                            : (value) async {
-                              if (value == null) return;
-                              await ref
-                                  .read(userSettingsControllerProvider.notifier)
-                                  .updateFixedMotivationPhrase(value);
-                            },
+                  'Backup (opcional)',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _newPhraseController,
-                  decoration: const InputDecoration(
-                    hintText: 'Digite uma nova frase',
-                  ),
-                  onSubmitted: (_) => _addPhrase(),
                 ),
-                const SizedBox(height: 10),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 380;
-
-                    final addButton = FilledButton.icon(
-                      onPressed: _isBusy ? null : _addPhrase,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Adicionar'),
-                    );
-
-                    final restoreButton = OutlinedButton.icon(
-                      onPressed: _isBusy ? null : _restoreDefaultPhrases,
-                      icon: const Icon(Icons.restart_alt_rounded),
-                      label: const Text(
-                        'Restaurar padrão',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-
-                    if (isNarrow) {
-                      return Column(
-                        children: [
-                          SizedBox(width: double.infinity, child: addButton),
+                const SizedBox(height: 8),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Use apenas se realmente precisar migrar ou guardar dados.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed:
+                              _isBusy
+                                  ? null
+                                  : () {
+                                    setState(() {
+                                      _showBackupTools = !_showBackupTools;
+                                    });
+                                  },
+                          icon: Icon(
+                            _showBackupTools
+                                ? Icons.expand_less_rounded
+                                : Icons.expand_more_rounded,
+                          ),
+                          label: Text(
+                            _showBackupTools
+                                ? 'Ocultar ferramentas de backup'
+                                : 'Mostrar ferramentas de backup',
+                          ),
+                        ),
+                        if (_showBackupTools) ...[
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: restoreButton,
+                          OutlinedButton.icon(
+                            onPressed: _isBusy ? null : _exportJson,
+                            icon: const Icon(Icons.file_upload_outlined),
+                            label: const Text('Exportar JSON'),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _isBusy ? null : _importJson,
+                            icon: const Icon(Icons.file_download_outlined),
+                            label: const Text('Importar JSON'),
                           ),
                         ],
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(child: addButton),
-                        const SizedBox(width: 10),
-                        Expanded(child: restoreButton),
                       ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red.shade700,
+                    ),
                   ),
-                  onPressed: _isBusy ? null : _clearPhrases,
-                  icon: const Icon(Icons.delete_sweep_rounded),
-                  label: const Text('Excluir todas as frases'),
-                ),
-                const SizedBox(height: 10),
-                phrasesAsync.when(
-                  loading: () => const LinearProgressIndicator(minHeight: 2),
-                  error: (error, _) => Text('Erro ao carregar frases: $error'),
-                  data: (phrases) {
-                    if (phrases.isEmpty) {
-                      return const Text('Sem frases cadastradas no momento.');
-                    }
-
-                    return Card(
-                      margin: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          for (int i = 0; i < phrases.length; i++) ...[
-                            ListTile(
-                              dense: true,
-                              visualDensity: VisualDensity.compact,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              title: Text(phrases[i]),
-                              trailing: IconButton(
-                                onPressed:
-                                    _isBusy ? null : () => _removePhrase(i),
-                                icon: const Icon(Icons.delete_outline_rounded),
-                              ),
-                            ),
-                            if (i < phrases.length - 1)
-                              const Divider(height: 1, thickness: 1),
-                          ],
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                Text('Dados', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _isBusy ? null : _exportJson,
-                  icon: const Icon(Icons.file_upload_outlined),
-                  label: const Text('Exportar e compartilhar JSON'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _isBusy ? null : _importJson,
-                  icon: const Icon(Icons.file_download_outlined),
-                  label: const Text('Importar dados de JSON'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red.shade700,
-                  ),
-                  onPressed: _isBusy ? null : _confirmClearData,
-                  icon: const Icon(Icons.delete_forever_outlined),
-                  label: const Text('Limpar dados do app'),
                 ),
               ],
             );
@@ -442,131 +315,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _saveName() async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      _showMessage('Informe um nome válido.');
-      return;
-    }
-
-    await ref.read(userSettingsControllerProvider.notifier).updateName(name);
-    _showMessage('Nome atualizado.');
-  }
-
-  Future<void> _addPhrase() async {
-    final phrase = _newPhraseController.text.trim();
-    if (phrase.isEmpty) {
-      _showMessage('Digite uma frase antes de adicionar.');
-      return;
-    }
-
-    await ref
-        .read(motivationPhrasesControllerProvider.notifier)
-        .addPhrase(phrase);
-    _newPhraseController.clear();
-    _showMessage('Frase adicionada.');
-  }
-
-  Future<void> _removePhrase(int index) async {
-    await ref
-        .read(motivationPhrasesControllerProvider.notifier)
-        .removeAt(index);
-    _showMessage('Frase removida.');
-  }
-
-  Future<void> _clearPhrases() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Excluir todas as frases?'),
-            content: const Text(
-              'Você pode adicionar novas depois. Esta ação remove todas as frases atuais.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Excluir'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirm != true) return;
-
-    await ref.read(motivationPhrasesControllerProvider.notifier).clearAll();
-    _showMessage('Todas as frases foram removidas.');
-  }
-
-  Future<void> _restoreDefaultPhrases() async {
-    await ref
-        .read(motivationPhrasesControllerProvider.notifier)
-        .restoreDefaults();
-    _showMessage('Frases padrão restauradas.');
-  }
-
   Future<void> _exportJson() async {
     setState(() => _isBusy = true);
     final result = await ref.read(jsonBackupServiceProvider).exportToJsonFile();
-    if (mounted) _showMessage(result.message);
-    if (mounted) setState(() => _isBusy = false);
+    if (mounted) {
+      _showMessage(result.message);
+      setState(() => _isBusy = false);
+    }
   }
 
   Future<void> _importJson() async {
     setState(() => _isBusy = true);
     final result =
         await ref.read(jsonBackupServiceProvider).importFromJsonFile();
-    await _reloadAll();
-    if (mounted) _showMessage(result.message);
-    if (mounted) setState(() => _isBusy = false);
+    await _reloadAfterImport();
+    if (mounted) {
+      _showMessage(result.message);
+      setState(() => _isBusy = false);
+    }
   }
 
-  Future<void> _confirmClearData() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Limpar dados?'),
-          content: const Text(
-            'Esta ação apaga atividades, histórico e configurações. Não pode ser desfeita.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Limpar tudo'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isBusy = true);
-    await ref.read(appDataRepositoryProvider).clearAll();
-    await LocalStorageService.ensureDefaultCategories();
-    await ref.read(motivationPhraseRepositoryProvider).restoreDefaults();
-    await _reloadAll();
-    if (mounted) _showMessage('Dados removidos com sucesso.');
-    if (mounted) setState(() => _isBusy = false);
-  }
-
-  Future<void> _reloadAll() async {
-    _didLoadInitialName = false;
-    await ref.read(categoriesControllerProvider.notifier).reload();
+  Future<void> _reloadAfterImport() async {
     await ref.read(activitiesControllerProvider.notifier).reload();
     await ref.read(userSettingsControllerProvider.notifier).reload();
-    await ref.read(motivationPhrasesControllerProvider.notifier).reload();
     await ref.read(todayControllerProvider.notifier).reload();
     await ref.read(historyControllerProvider.notifier).reload();
+    await ref.read(weeklyDashboardControllerProvider.notifier).reload();
+    await ref.read(dailyClosuresControllerProvider.notifier).reload();
   }
 
   void _showMessage(String message) {

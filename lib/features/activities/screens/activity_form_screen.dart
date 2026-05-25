@@ -146,246 +146,248 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
           data: (categories) {
-          final fallbackCategory =
-              categories.isNotEmpty ? categories.first.id : null;
-          _categoryId ??= fallbackCategory;
+            final fallbackCategory =
+                categories.isNotEmpty ? categories.first.id : null;
+            _categoryId ??= fallbackCategory;
 
-          return Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome da atividade',
+            return Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome da atividade',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Informe um nome';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Informe um nome';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Descrição (opcional)',
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _descriptionController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Descrição (opcional)',
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _categoryId,
-                  items:
-                      categories
-                          .map(
-                            (category) => DropdownMenuItem(
-                              value: category.id,
-                              child: Text(category.name),
-                            ),
-                          )
-                          .toList(),
-                  decoration: const InputDecoration(labelText: 'Categoria'),
-                  onChanged: (value) => setState(() => _categoryId = value),
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _createCategoryInline,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Cadastrar categoria'),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _categoryId,
+                    items:
+                        categories
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                            )
+                            .toList(),
+                    decoration: const InputDecoration(labelText: 'Categoria'),
+                    onChanged: (value) => setState(() => _categoryId = value),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _TimeInput(
-                        label: 'Horário inicial',
-                        value: _startTime,
-                        onPick: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime:
-                                _startTime ??
-                                const TimeOfDay(hour: 7, minute: 0),
-                          );
-                          if (picked != null) {
-                            setState(() => _startTime = picked);
-                          }
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: _createCategoryInline,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Cadastrar categoria'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TimeInput(
+                          label: 'Horário inicial',
+                          value: _startTime,
+                          onPick: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime:
+                                  _startTime ??
+                                  const TimeOfDay(hour: 7, minute: 0),
+                            );
+                            if (picked != null) {
+                              setState(() => _startTime = picked);
+                            }
+                          },
+                          onClear: () => setState(() => _startTime = null),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _TimeInput(
+                          label: 'Horário final',
+                          value: _endTime,
+                          onPick: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime:
+                                  _endTime ??
+                                  const TimeOfDay(hour: 8, minute: 0),
+                            );
+                            if (picked != null) {
+                              setState(() => _endTime = picked);
+                            }
+                          },
+                          onClear: () => setState(() => _endTime = null),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Dias da semana',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(7, (index) {
+                      final day = index + 1;
+                      final selected = _weekdays.contains(day);
+                      const labels = [
+                        'Seg',
+                        'Ter',
+                        'Qua',
+                        'Qui',
+                        'Sex',
+                        'Sab',
+                        'Dom',
+                      ];
+
+                      return FilterChip(
+                        label: Text(labels[index]),
+                        selected: selected,
+                        onSelected: (value) {
+                          setState(() {
+                            if (value) {
+                              _weekdays = [..._weekdays, day]..sort();
+                            } else {
+                              _weekdays =
+                                  _weekdays.where((d) => d != day).toList();
+                            }
+                          });
                         },
-                        onClear: () => setState(() => _startTime = null),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Cor do card',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        _colorOptions.map((color) {
+                          return _ColorOptionSwatch(
+                            color: Color(color),
+                            selected: _selectedColor == color,
+                            onTap: () => setState(() => _selectedColor = color),
+                            size: 38,
+                          );
+                        }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Ícone', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        _primaryIconOptions.map((key) {
+                          final selected = _iconKey == key;
+                          return ChoiceChip(
+                            label: Icon(IconMapper.fromKey(key), size: 18),
+                            selected: selected,
+                            onSelected: (_) => setState(() => _iconKey = key),
+                          );
+                        }).toList(),
+                  ),
+                  if (_iconKey != null &&
+                      !_primaryIconOptions.contains(_iconKey))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Selecionado:',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: Icon(IconMapper.fromKey(_iconKey), size: 18),
+                            selected: true,
+                            onSelected: (_) {},
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _TimeInput(
-                        label: 'Horário final',
-                        value: _endTime,
-                        onPick: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime:
-                                _endTime ?? const TimeOfDay(hour: 8, minute: 0),
-                          );
-                          if (picked != null) {
-                            setState(() => _endTime = picked);
-                          }
-                        },
-                        onClear: () => setState(() => _endTime = null),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _openAllIconsPicker,
+                      icon: const Icon(Icons.grid_view_rounded),
+                      label: const Text('Ver todos os ícones'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Atividade ativa',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Dias da semana',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: List.generate(7, (index) {
-                    final day = index + 1;
-                    final selected = _weekdays.contains(day);
-                    const labels = [
-                      'Seg',
-                      'Ter',
-                      'Qua',
-                      'Qui',
-                      'Sex',
-                      'Sab',
-                      'Dom',
-                    ];
-
-                    return FilterChip(
-                      label: Text(labels[index]),
-                      selected: selected,
-                      onSelected: (value) {
-                        setState(() {
-                          if (value) {
-                            _weekdays = [..._weekdays, day]..sort();
-                          } else {
-                            _weekdays =
-                                _weekdays.where((d) => d != day).toList();
-                          }
-                        });
-                      },
-                    );
-                  }),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Cor do card',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children:
-                      _colorOptions.map((color) {
-                        return _ColorOptionSwatch(
-                          color: Color(color),
-                          selected: _selectedColor == color,
-                          onTap: () => setState(() => _selectedColor = color),
-                          size: 38,
-                        );
-                      }).toList(),
-                ),
-                const SizedBox(height: 16),
-                Text('Ícone', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children:
-                      _primaryIconOptions.map((key) {
-                        final selected = _iconKey == key;
-                        return ChoiceChip(
-                          label: Icon(IconMapper.fromKey(key), size: 18),
-                          selected: selected,
-                          onSelected: (_) => setState(() => _iconKey = key),
-                        );
-                      }).toList(),
-                ),
-                if (_iconKey != null && !_primaryIconOptions.contains(_iconKey))
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Selecionado:',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: Icon(IconMapper.fromKey(_iconKey), size: 18),
-                          selected: true,
-                          onSelected: (_) {},
-                        ),
-                      ],
+                    subtitle: Text(
+                      'Quando desativada, esta atividade não aparece na rotina diária.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(height: 1.35),
+                    ),
+                    value: _isActive,
+                    onChanged: (value) => setState(() => _isActive = value),
+                  ),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Lembretes locais',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Quando ativado, o app envia uma notificação no horário inicial da atividade.',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(height: 1.35),
+                    ),
+                    value: _remindersEnabled,
+                    onChanged:
+                        (value) => setState(() => _remindersEnabled = value),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: _isSubmitting ? null : _save,
+                    child: Text(
+                      _isSubmitting ? 'Salvando...' : 'Salvar atividade',
                     ),
                   ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _openAllIconsPicker,
-                    icon: const Icon(Icons.grid_view_rounded),
-                    label: const Text('Ver todos os ícones'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    'Atividade ativa',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Quando desativada, esta atividade não aparece na rotina diária.',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(height: 1.35),
-                  ),
-                  value: _isActive,
-                  onChanged: (value) => setState(() => _isActive = value),
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    'Lembretes locais',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Quando ativado, o app envia uma notificação no horário inicial da atividade.',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(height: 1.35),
-                  ),
-                  value: _remindersEnabled,
-                  onChanged:
-                      (value) => setState(() => _remindersEnabled = value),
-                ),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: _isSubmitting ? null : _save,
-                  child: Text(
-                    _isSubmitting ? 'Salvando...' : 'Salvar atividade',
-                  ),
-                ),
-              ],
-            ),
-          );
+                ],
+              ),
+            );
           },
         ),
       ),
@@ -760,7 +762,8 @@ class _ColorOptionSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final iconColor = color.computeLuminance() > 0.62 ? Colors.black : Colors.white;
+    final iconColor =
+        color.computeLuminance() > 0.62 ? Colors.black : Colors.white;
 
     return InkWell(
       onTap: onTap,
@@ -774,14 +777,18 @@ class _ColorOptionSwatch extends StatelessWidget {
           shape: BoxShape.circle,
           color: color,
           border: Border.all(
-            color: selected ? scheme.primary : scheme.outline.withValues(alpha: 0.45),
+            color:
+                selected
+                    ? scheme.primary
+                    : scheme.outline.withValues(alpha: 0.45),
             width: selected ? 3 : 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: selected
-                  ? scheme.primary.withValues(alpha: 0.22)
-                  : Colors.black.withValues(alpha: 0.08),
+              color:
+                  selected
+                      ? scheme.primary.withValues(alpha: 0.22)
+                      : Colors.black.withValues(alpha: 0.08),
               blurRadius: selected ? 10 : 4,
               spreadRadius: selected ? 1 : 0,
               offset: const Offset(0, 2),

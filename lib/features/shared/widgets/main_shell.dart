@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../activities/screens/activities_screen.dart';
-import '../../dashboard/screens/dashboard_screen.dart';
 import '../../history/screens/history_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../today/screens/today_screen.dart';
@@ -18,9 +17,8 @@ class _MainShellState extends State<MainShell> {
 
   static const _screens = [
     TodayScreen(),
-    ActivitiesScreen(),
     HistoryScreen(),
-    DashboardScreen(),
+    ActivitiesScreen(),
     SettingsScreen(),
   ];
 
@@ -37,19 +35,14 @@ class _MainShellState extends State<MainShell> {
             label: 'Hoje',
           ),
           NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history_rounded),
+            label: 'Revisão',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.checklist_outlined),
             selectedIcon: Icon(Icons.checklist_rounded),
-            label: 'Atividades',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded),
-            label: 'Histórico',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights_rounded),
-            label: 'Semana',
+            label: 'Rotina',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

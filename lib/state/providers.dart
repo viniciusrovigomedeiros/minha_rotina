@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/activity_repository.dart';
 import '../data/repositories/app_data_repository.dart';
 import '../data/repositories/category_repository.dart';
+import '../data/repositories/daily_closure_repository.dart';
 import '../data/repositories/daily_log_repository.dart';
 import '../data/repositories/daily_plan_repository.dart';
 import '../data/repositories/motivation_phrase_repository.dart';
@@ -21,6 +22,10 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
 
 final dailyLogRepositoryProvider = Provider<DailyLogRepository>((ref) {
   return DailyLogRepository();
+});
+
+final dailyClosureRepositoryProvider = Provider<DailyClosureRepository>((ref) {
+  return DailyClosureRepository();
 });
 
 final dailyPlanRepositoryProvider = Provider<DailyPlanRepository>((ref) {
@@ -45,6 +50,7 @@ final appDataRepositoryProvider = Provider<AppDataRepository>((ref) {
   return AppDataRepository(
     activityRepository: ref.read(activityRepositoryProvider),
     dailyLogRepository: ref.read(dailyLogRepositoryProvider),
+    dailyClosureRepository: ref.read(dailyClosureRepositoryProvider),
     dailyPlanRepository: ref.read(dailyPlanRepositoryProvider),
     weeklyGoalRepository: ref.read(weeklyGoalRepositoryProvider),
     categoryRepository: ref.read(categoryRepositoryProvider),
