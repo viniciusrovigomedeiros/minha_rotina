@@ -6,7 +6,11 @@ import '../data/repositories/category_repository.dart';
 import '../data/repositories/daily_closure_repository.dart';
 import '../data/repositories/daily_log_repository.dart';
 import '../data/repositories/daily_plan_repository.dart';
+import '../data/repositories/key_result_check_in_repository.dart';
+import '../data/repositories/key_result_repository.dart';
 import '../data/repositories/motivation_phrase_repository.dart';
+import '../data/repositories/okr_cycle_repository.dart';
+import '../data/repositories/okr_objective_repository.dart';
 import '../data/repositories/user_settings_repository.dart';
 import '../data/repositories/weekly_goal_repository.dart';
 import '../data/services/json_backup_service.dart';
@@ -36,6 +40,24 @@ final weeklyGoalRepositoryProvider = Provider<WeeklyGoalRepository>((ref) {
   return WeeklyGoalRepository();
 });
 
+final okrCycleRepositoryProvider = Provider<OkrCycleRepository>((ref) {
+  return OkrCycleRepository();
+});
+
+final okrObjectiveRepositoryProvider = Provider<OkrObjectiveRepository>((ref) {
+  return OkrObjectiveRepository();
+});
+
+final keyResultRepositoryProvider = Provider<KeyResultRepository>((ref) {
+  return KeyResultRepository();
+});
+
+final keyResultCheckInRepositoryProvider = Provider<KeyResultCheckInRepository>(
+  (ref) {
+    return KeyResultCheckInRepository();
+  },
+);
+
 final userSettingsRepositoryProvider = Provider<UserSettingsRepository>((ref) {
   return UserSettingsRepository();
 });
@@ -53,6 +75,10 @@ final appDataRepositoryProvider = Provider<AppDataRepository>((ref) {
     dailyClosureRepository: ref.read(dailyClosureRepositoryProvider),
     dailyPlanRepository: ref.read(dailyPlanRepositoryProvider),
     weeklyGoalRepository: ref.read(weeklyGoalRepositoryProvider),
+    okrCycleRepository: ref.read(okrCycleRepositoryProvider),
+    okrObjectiveRepository: ref.read(okrObjectiveRepositoryProvider),
+    keyResultRepository: ref.read(keyResultRepositoryProvider),
+    keyResultCheckInRepository: ref.read(keyResultCheckInRepositoryProvider),
     categoryRepository: ref.read(categoryRepositoryProvider),
     userSettingsRepository: ref.read(userSettingsRepositoryProvider),
     motivationPhraseRepository: ref.read(motivationPhraseRepositoryProvider),

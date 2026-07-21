@@ -1,5 +1,30 @@
 import 'package:flutter/material.dart';
 
+enum ActivityRecurrence { oneOff, daily, weekly, monthly, flexible }
+
+extension ActivityRecurrenceValues on ActivityRecurrence {
+  String get value => name;
+
+  String get label => switch (this) {
+    ActivityRecurrence.oneOff => 'Única',
+    ActivityRecurrence.daily => 'Diária',
+    ActivityRecurrence.weekly => 'Semanal',
+    ActivityRecurrence.monthly => 'Mensal',
+    ActivityRecurrence.flexible => 'Sem recorrência',
+  };
+}
+
+class ActivityRecurrenceX {
+  const ActivityRecurrenceX._();
+
+  static ActivityRecurrence fromValue(String? value) {
+    return ActivityRecurrence.values.firstWhere(
+      (item) => item.value == value,
+      orElse: () => ActivityRecurrence.flexible,
+    );
+  }
+}
+
 class Activity {
   const Activity({
     required this.id,
@@ -15,6 +40,10 @@ class Activity {
     this.endMinutes,
     this.colorHex,
     this.iconKey,
+    this.objectiveId,
+    this.keyResultId,
+    this.recurrence = ActivityRecurrence.flexible,
+    this.scheduledDate,
   });
 
   final String id;
@@ -26,6 +55,10 @@ class Activity {
   final List<int> weekdays;
   final int? colorHex;
   final String? iconKey;
+  final String? objectiveId;
+  final String? keyResultId;
+  final ActivityRecurrence recurrence;
+  final DateTime? scheduledDate;
   final bool isActive;
   final bool remindersEnabled;
   final DateTime createdAt;
@@ -43,6 +76,10 @@ class Activity {
     List<int>? weekdays,
     int? colorHex,
     String? iconKey,
+    String? objectiveId,
+    String? keyResultId,
+    ActivityRecurrence? recurrence,
+    DateTime? scheduledDate,
     bool? isActive,
     bool? remindersEnabled,
     DateTime? createdAt,
@@ -52,6 +89,9 @@ class Activity {
     bool clearEndMinutes = false,
     bool clearColor = false,
     bool clearIcon = false,
+    bool clearObjectiveId = false,
+    bool clearKeyResultId = false,
+    bool clearScheduledDate = false,
   }) {
     return Activity(
       id: id ?? this.id,
@@ -64,6 +104,11 @@ class Activity {
       weekdays: weekdays ?? this.weekdays,
       colorHex: clearColor ? null : colorHex ?? this.colorHex,
       iconKey: clearIcon ? null : iconKey ?? this.iconKey,
+      objectiveId: clearObjectiveId ? null : objectiveId ?? this.objectiveId,
+      keyResultId: clearKeyResultId ? null : keyResultId ?? this.keyResultId,
+      recurrence: recurrence ?? this.recurrence,
+      scheduledDate:
+          clearScheduledDate ? null : scheduledDate ?? this.scheduledDate,
       isActive: isActive ?? this.isActive,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       createdAt: createdAt ?? this.createdAt,
@@ -82,6 +127,10 @@ class Activity {
       'weekdays': weekdays,
       'colorHex': colorHex,
       'iconKey': iconKey,
+      'objectiveId': objectiveId,
+      'keyResultId': keyResultId,
+      'recurrence': recurrence.value,
+      'scheduledDate': scheduledDate?.toIso8601String(),
       'isActive': isActive,
       'remindersEnabled': remindersEnabled,
       'createdAt': createdAt.toIso8601String(),
@@ -90,6 +139,8 @@ class Activity {
   }
 
   factory Activity.fromMap(Map<String, dynamic> map) {
+    final weekdays = List<int>.from((map['weekdays'] as List<dynamic>? ?? []));
+
     return Activity(
       id: map['id'] as String,
       name: map['name'] as String,
@@ -97,9 +148,19 @@ class Activity {
       categoryId: map['categoryId'] as String,
       startMinutes: map['startMinutes'] as int?,
       endMinutes: map['endMinutes'] as int?,
-      weekdays: List<int>.from(map['weekdays'] as List<dynamic>),
+      weekdays: weekdays,
       colorHex: map['colorHex'] as int?,
       iconKey: map['iconKey'] as String?,
+      objectiveId: map['objectiveId'] as String?,
+      keyResultId: map['keyResultId'] as String?,
+      recurrence: ActivityRecurrenceX.fromValue(
+        map['recurrence'] as String? ??
+            (weekdays.isEmpty ? 'flexible' : 'weekly'),
+      ),
+      scheduledDate:
+          map['scheduledDate'] == null
+              ? null
+              : DateTime.parse(map['scheduledDate'] as String),
       isActive: map['isActive'] as bool,
       remindersEnabled: (map['remindersEnabled'] as bool?) ?? false,
       createdAt: DateTime.parse(map['createdAt'] as String),

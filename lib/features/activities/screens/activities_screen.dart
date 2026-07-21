@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../data/models/activity.dart';
 import '../../../state/activities_controller.dart';
+import '../../../state/okr_workspace_controller.dart';
 import 'activity_form_screen.dart';
 
 class ActivitiesScreen extends ConsumerWidget {
@@ -12,9 +13,14 @@ class ActivitiesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activitiesAsync = ref.watch(activitiesControllerProvider);
+    final workspace = ref.watch(okrWorkspaceControllerProvider).valueOrNull;
+    final objectiveTitles = {
+      for (final item in workspace?.allObjectives ?? const <dynamic>[])
+        item.objective.id: item.objective.title,
+    };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Rotina')),
+      appBar: AppBar(title: const Text('Iniciativas e tarefas')),
       body: SafeArea(
         top: false,
         child: activitiesAsync.when(
@@ -26,7 +32,7 @@ class ActivitiesScreen extends ConsumerWidget {
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'Você ainda não cadastrou atividades.\nToque em + para começar sua rotina.',
+                    'Você ainda não cadastrou iniciativas ou tarefas.\nToque em + para começar.',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -54,6 +60,10 @@ class ActivitiesScreen extends ConsumerWidget {
 
                               return _ActivityListTile(
                                 activity: activity,
+                                objectiveTitle:
+                                    activity.objectiveId == null
+                                        ? null
+                                        : objectiveTitles[activity.objectiveId],
                                 onEdit: () async {
                                   await Navigator.of(context).push<bool>(
                                     MaterialPageRoute(
@@ -105,7 +115,7 @@ class ActivitiesScreen extends ConsumerWidget {
           await ref.read(activitiesControllerProvider.notifier).reload();
         },
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Nova atividade'),
+        label: const Text('Nova iniciativa'),
       ),
     );
   }
@@ -114,11 +124,13 @@ class ActivitiesScreen extends ConsumerWidget {
 class _ActivityListTile extends StatelessWidget {
   const _ActivityListTile({
     required this.activity,
+    required this.objectiveTitle,
     required this.onEdit,
     required this.onDelete,
   });
 
   final Activity activity;
+  final String? objectiveTitle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -133,6 +145,12 @@ class _ActivityListTile extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 2),
+          if (objectiveTitle != null) ...[
+            Text('Objetivo: $objectiveTitle'),
+            const SizedBox(height: 2),
+          ],
+          Text('Recorrência: ${activity.recurrence.label}'),
           const SizedBox(height: 2),
           Text(
             'Horário: ${TimeFormat.formatMinutesRange(activity.startMinutes, activity.endMinutes)}',

@@ -13,6 +13,10 @@ class LocalStorageService {
   static const String settingsBoxName = 'settings_box';
   static const String categoriesBoxName = 'categories_box';
   static const String metadataBoxName = 'metadata_box';
+  static const String okrCyclesBoxName = 'okr_cycles_box';
+  static const String okrObjectivesBoxName = 'okr_objectives_box';
+  static const String keyResultsBoxName = 'key_results_box';
+  static const String keyResultCheckInsBoxName = 'key_result_check_ins_box';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -26,6 +30,10 @@ class LocalStorageService {
       Hive.openBox<Map>(settingsBoxName),
       Hive.openBox<Map>(categoriesBoxName),
       Hive.openBox<Map>(metadataBoxName),
+      Hive.openBox<Map>(okrCyclesBoxName),
+      Hive.openBox<Map>(okrObjectivesBoxName),
+      Hive.openBox<Map>(keyResultsBoxName),
+      Hive.openBox<Map>(keyResultCheckInsBoxName),
     ]);
 
     await ensureDefaultCategories();
@@ -48,4 +56,9 @@ class LocalStorageService {
   static Box<Map> get settingsBox => Hive.box<Map>(settingsBoxName);
   static Box<Map> get categoriesBox => Hive.box<Map>(categoriesBoxName);
   static Box<Map> get metadataBox => Hive.box<Map>(metadataBoxName);
+  static Box<Map> get okrCyclesBox => Hive.box<Map>(okrCyclesBoxName);
+  static Box<Map> get okrObjectivesBox => Hive.box<Map>(okrObjectivesBoxName);
+  static Box<Map> get keyResultsBox => Hive.box<Map>(keyResultsBoxName);
+  static Box<Map> get keyResultCheckInsBox =>
+      Hive.box<Map>(keyResultCheckInsBoxName);
 }

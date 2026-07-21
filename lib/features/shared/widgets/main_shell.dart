@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../activities/screens/activities_screen.dart';
-import '../../history/screens/history_screen.dart';
+import '../../okr/screens/okr_home_screen.dart';
+import '../../okr/screens/okr_objectives_screen.dart';
 import '../../settings/screens/settings_screen.dart';
-import '../../today/screens/today_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -16,8 +16,8 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
   static const _screens = [
-    TodayScreen(),
-    HistoryScreen(),
+    OkrHomeScreen(),
+    OkrObjectivesScreen(),
     ActivitiesScreen(),
     SettingsScreen(),
   ];
@@ -32,17 +32,17 @@ class _MainShellState extends State<MainShell> {
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded),
-            label: 'Hoje',
+            label: 'Início',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history_rounded),
-            label: 'Revisão',
+            icon: Icon(Icons.flag_outlined),
+            selectedIcon: Icon(Icons.flag_rounded),
+            label: 'Objetivos',
           ),
           NavigationDestination(
             icon: Icon(Icons.checklist_outlined),
             selectedIcon: Icon(Icons.checklist_rounded),
-            label: 'Rotina',
+            label: 'Iniciativas',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

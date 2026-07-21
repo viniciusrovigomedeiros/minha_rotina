@@ -6,11 +6,19 @@ import '../../../core/utils/time_of_day_utils.dart';
 import '../../../data/models/activity.dart';
 import '../../../state/activities_controller.dart';
 import '../../../state/categories_controller.dart';
+import '../../../state/okr_workspace_controller.dart';
 
 class ActivityFormScreen extends ConsumerStatefulWidget {
-  const ActivityFormScreen({super.key, this.activity});
+  const ActivityFormScreen({
+    super.key,
+    this.activity,
+    this.initialObjectiveId,
+    this.initialKeyResultId,
+  });
 
   final Activity? activity;
+  final String? initialObjectiveId;
+  final String? initialKeyResultId;
 
   bool get isEditing => activity != null;
 
@@ -27,8 +35,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   List<int> _weekdays = [];
+  ActivityRecurrence _recurrence = ActivityRecurrence.flexible;
+  DateTime? _scheduledDate;
   int? _selectedColor;
   String? _iconKey;
+  String? _objectiveId;
+  String? _keyResultId;
   bool _isActive = true;
   bool _remindersEnabled = false;
   bool _isSubmitting = false;
@@ -108,8 +120,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       _descriptionController.text = activity.description ?? '';
       _categoryId = activity.categoryId;
       _weekdays = List<int>.from(activity.weekdays);
+      _recurrence = activity.recurrence;
+      _scheduledDate = activity.scheduledDate;
       _selectedColor = activity.colorHex;
       _iconKey = activity.iconKey;
+      _objectiveId = activity.objectiveId;
+      _keyResultId = activity.keyResultId;
       _isActive = activity.isActive;
       _remindersEnabled = activity.remindersEnabled;
       if (activity.startMinutes != null) {
@@ -120,8 +136,11 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       }
     } else {
       _weekdays = [1, 2, 3, 4, 5];
+      _recurrence = ActivityRecurrence.weekly;
       _iconKey = 'checklist';
       _selectedColor = _colorOptions.first;
+      _objectiveId = widget.initialObjectiveId;
+      _keyResultId = widget.initialKeyResultId;
     }
   }
 
@@ -135,10 +154,17 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesControllerProvider);
+    final workspace = ref.watch(okrWorkspaceControllerProvider).valueOrNull;
+    final objectives = workspace?.allObjectives ?? const [];
+    final objectiveMatches =
+        objectives.where((item) => item.objective.id == _objectiveId).toList();
+    final selectedObjective =
+        objectiveMatches.isEmpty ? null : objectiveMatches.first;
+    final keyResults = selectedObjective?.keyResults ?? const [];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? 'Editar atividade' : 'Nova atividade'),
+        title: Text(widget.isEditing ? 'Editar iniciativa' : 'Nova iniciativa'),
       ),
       body: SafeArea(
         top: false,
@@ -158,7 +184,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Nome da atividade',
+                      labelText: 'Nome da iniciativa',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -175,6 +201,70 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Descrição (opcional)',
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: _objectiveId,
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Sem objetivo vinculado'),
+                      ),
+                      ...objectives.map(
+                        (item) => DropdownMenuItem<String?>(
+                          value: item.objective.id,
+                          child: Text(item.objective.title),
+                        ),
+                      ),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Objetivo (opcional)',
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _objectiveId = value;
+                        if (_objectiveId == null) {
+                          _keyResultId = null;
+                        } else {
+                          final matches =
+                              objectives
+                                  .where(
+                                    (item) => item.objective.id == _objectiveId,
+                                  )
+                                  .toList();
+                          if (matches.isEmpty) {
+                            _keyResultId = null;
+                          } else if (!matches.first.keyResults.any(
+                            (item) => item.keyResult.id == _keyResultId,
+                          )) {
+                            _keyResultId = null;
+                          }
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: _keyResultId,
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Sem resultado-chave específico'),
+                      ),
+                      ...keyResults.map(
+                        (item) => DropdownMenuItem<String?>(
+                          value: item.keyResult.id,
+                          child: Text(item.keyResult.title),
+                        ),
+                      ),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Resultado-chave (opcional)',
+                    ),
+                    onChanged:
+                        _objectiveId == null
+                            ? null
+                            : (value) => setState(() => _keyResultId = value),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -242,43 +332,110 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  DropdownButtonFormField<ActivityRecurrence>(
+                    value: _recurrence,
+                    decoration: const InputDecoration(labelText: 'Recorrência'),
+                    items:
+                        ActivityRecurrence.values
+                            .map(
+                              (recurrence) => DropdownMenuItem(
+                                value: recurrence,
+                                child: Text(recurrence.label),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _recurrence = value;
+                        switch (_recurrence) {
+                          case ActivityRecurrence.daily:
+                            _weekdays = [1, 2, 3, 4, 5, 6, 7];
+                            break;
+                          case ActivityRecurrence.weekly:
+                            _weekdays =
+                                _weekdays.isEmpty ? [1, 2, 3, 4, 5] : _weekdays;
+                            break;
+                          case ActivityRecurrence.oneOff:
+                            _scheduledDate ??= DateTime(2026, 7, 20);
+                            _weekdays = [];
+                            break;
+                          case ActivityRecurrence.monthly:
+                          case ActivityRecurrence.flexible:
+                            _weekdays = [];
+                            break;
+                        }
+                      });
+                    },
+                  ),
+                  if (_recurrence == ActivityRecurrence.oneOff ||
+                      _recurrence == ActivityRecurrence.monthly) ...[
+                    const SizedBox(height: 12),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: _pickScheduledDate,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Data de referência',
+                        ),
+                        child: Text(
+                          _scheduledDate == null
+                              ? 'Selecionar data'
+                              : '${_scheduledDate!.day.toString().padLeft(2, '0')}/${_scheduledDate!.month.toString().padLeft(2, '0')}/${_scheduledDate!.year}',
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
                   Text(
                     'Dias da semana',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(7, (index) {
-                      final day = index + 1;
-                      final selected = _weekdays.contains(day);
-                      const labels = [
-                        'Seg',
-                        'Ter',
-                        'Qua',
-                        'Qui',
-                        'Sex',
-                        'Sab',
-                        'Dom',
-                      ];
+                  if (_recurrence == ActivityRecurrence.weekly)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(7, (index) {
+                        final day = index + 1;
+                        final selected = _weekdays.contains(day);
+                        const labels = [
+                          'Seg',
+                          'Ter',
+                          'Qua',
+                          'Qui',
+                          'Sex',
+                          'Sab',
+                          'Dom',
+                        ];
 
-                      return FilterChip(
-                        label: Text(labels[index]),
-                        selected: selected,
-                        onSelected: (value) {
-                          setState(() {
-                            if (value) {
-                              _weekdays = [..._weekdays, day]..sort();
-                            } else {
-                              _weekdays =
-                                  _weekdays.where((d) => d != day).toList();
-                            }
-                          });
-                        },
-                      );
-                    }),
-                  ),
+                        return FilterChip(
+                          label: Text(labels[index]),
+                          selected: selected,
+                          onSelected: (value) {
+                            setState(() {
+                              if (value) {
+                                _weekdays = [..._weekdays, day]..sort();
+                              } else {
+                                _weekdays =
+                                    _weekdays.where((d) => d != day).toList();
+                              }
+                            });
+                          },
+                        );
+                      }),
+                    )
+                  else
+                    Text(
+                      _recurrence == ActivityRecurrence.daily
+                          ? 'Essa iniciativa aparecerá todos os dias.'
+                          : _recurrence == ActivityRecurrence.oneOff
+                          ? 'Essa iniciativa será exibida apenas na data definida.'
+                          : _recurrence == ActivityRecurrence.monthly
+                          ? 'A data escolhida serve como referência mensal.'
+                          : 'Sem recorrência fixa. Use quando quiser manter a tarefa disponível sem agenda.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   const SizedBox(height: 16),
                   Text(
                     'Cor do card',
@@ -346,7 +503,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      'Atividade ativa',
+                      'Iniciativa ativa',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -382,7 +539,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   FilledButton(
                     onPressed: _isSubmitting ? null : _save,
                     child: Text(
-                      _isSubmitting ? 'Salvando...' : 'Salvar atividade',
+                      _isSubmitting ? 'Salvando...' : 'Salvar iniciativa',
                     ),
                   ),
                 ],
@@ -398,8 +555,14 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
     if (_isSubmitting) return;
 
     if (!_formKey.currentState!.validate()) return;
-    if (_weekdays.isEmpty) {
+    if (_recurrence == ActivityRecurrence.weekly && _weekdays.isEmpty) {
       _showMessage('Selecione ao menos um dia da semana.');
+      return;
+    }
+    if ((_recurrence == ActivityRecurrence.oneOff ||
+            _recurrence == ActivityRecurrence.monthly) &&
+        _scheduledDate == null) {
+      _showMessage('Selecione uma data de referência.');
       return;
     }
 
@@ -418,12 +581,16 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         description: _descriptionController.text,
         categoryId: _categoryId!,
         weekdays: _weekdays,
+        recurrence: _recurrence,
         startMinutes:
             _startTime == null ? null : TimeOfDayUtils.toMinutes(_startTime!),
         endMinutes:
             _endTime == null ? null : TimeOfDayUtils.toMinutes(_endTime!),
         colorHex: _selectedColor,
         iconKey: _iconKey,
+        objectiveId: _objectiveId,
+        keyResultId: _keyResultId,
+        scheduledDate: _scheduledDate,
         isActive: _isActive,
         remindersEnabled: _remindersEnabled,
       );
@@ -438,12 +605,16 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   : _descriptionController.text.trim(),
           categoryId: _categoryId ?? current.categoryId,
           weekdays: _weekdays,
+          recurrence: _recurrence,
           startMinutes:
               _startTime == null ? null : TimeOfDayUtils.toMinutes(_startTime!),
           endMinutes:
               _endTime == null ? null : TimeOfDayUtils.toMinutes(_endTime!),
           colorHex: _selectedColor,
           iconKey: _iconKey,
+          objectiveId: _objectiveId,
+          keyResultId: _keyResultId,
+          scheduledDate: _scheduledDate,
           isActive: _isActive,
           remindersEnabled: _remindersEnabled,
           updatedAt: DateTime.now(),
@@ -452,6 +623,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
           clearEndMinutes: _endTime == null,
           clearColor: _selectedColor == null,
           clearIcon: _iconKey == null,
+          clearObjectiveId: _objectiveId == null,
+          clearKeyResultId: _keyResultId == null,
+          clearScheduledDate: _scheduledDate == null,
         ),
       );
     }
@@ -510,6 +684,19 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
 
     if (selected == null) return;
     setState(() => _iconKey = selected);
+  }
+
+  Future<void> _pickScheduledDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _scheduledDate ?? DateTime(2026, 7, 20),
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2032),
+      locale: const Locale('pt', 'BR'),
+    );
+
+    if (picked == null) return;
+    setState(() => _scheduledDate = picked);
   }
 }
 

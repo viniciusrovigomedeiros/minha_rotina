@@ -11,6 +11,10 @@ import '../models/category.dart';
 import '../models/daily_activity_log.dart';
 import '../models/daily_closure_entry.dart';
 import '../models/daily_plan_snapshot.dart';
+import '../models/key_result.dart';
+import '../models/key_result_check_in.dart';
+import '../models/okr_cycle.dart';
+import '../models/okr_objective.dart';
 import '../models/user_settings.dart';
 import '../models/weekly_goal.dart';
 import '../repositories/app_data_repository.dart';
@@ -110,6 +114,10 @@ class JsonBackupService {
       final dailyPlansRaw = root['dailyPlans'];
       final dailyClosuresRaw = root['dailyClosures'];
       final weeklyGoalsRaw = root['weeklyGoals'];
+      final okrCyclesRaw = root['okrCycles'];
+      final okrObjectivesRaw = root['okrObjectives'];
+      final keyResultsRaw = root['keyResults'];
+      final keyResultCheckInsRaw = root['keyResultCheckIns'];
       final categoriesRaw = root['categories'];
       final userSettingsRaw = root['userSettings'];
       final motivationPhrasesRaw = root['motivationPhrases'];
@@ -182,6 +190,50 @@ class JsonBackupService {
               )
               .toList();
 
+      final okrCycles =
+          okrCyclesRaw is List
+              ? okrCyclesRaw
+                  .map(
+                    (entry) => OkrCycle.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <OkrCycle>[];
+
+      final okrObjectives =
+          okrObjectivesRaw is List
+              ? okrObjectivesRaw
+                  .map(
+                    (entry) => OkrObjective.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <OkrObjective>[];
+
+      final keyResults =
+          keyResultsRaw is List
+              ? keyResultsRaw
+                  .map(
+                    (entry) => KeyResult.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <KeyResult>[];
+
+      final keyResultCheckIns =
+          keyResultCheckInsRaw is List
+              ? keyResultCheckInsRaw
+                  .map(
+                    (entry) => KeyResultCheckIn.fromMap(
+                      Map<String, dynamic>.from(entry as Map),
+                    ),
+                  )
+                  .toList()
+              : const <KeyResultCheckIn>[];
+
       final userSettings = UserSettings.fromMap(
         Map<String, dynamic>.from(userSettingsRaw),
       );
@@ -199,6 +251,10 @@ class JsonBackupService {
         dailyClosures: dailyClosures,
         dailyPlans: dailyPlans,
         weeklyGoals: weeklyGoals,
+        okrCycles: okrCycles,
+        okrObjectives: okrObjectives,
+        keyResults: keyResults,
+        keyResultCheckIns: keyResultCheckIns,
         categories: categories,
         userSettings: userSettings,
         motivationPhrases: motivationPhrases,

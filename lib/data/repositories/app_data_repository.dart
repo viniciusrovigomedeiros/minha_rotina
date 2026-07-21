@@ -3,6 +3,10 @@ import '../models/category.dart';
 import '../models/daily_activity_log.dart';
 import '../models/daily_closure_entry.dart';
 import '../models/daily_plan_snapshot.dart';
+import '../models/key_result.dart';
+import '../models/key_result_check_in.dart';
+import '../models/okr_cycle.dart';
+import '../models/okr_objective.dart';
 import '../models/user_settings.dart';
 import '../models/weekly_goal.dart';
 import 'activity_repository.dart';
@@ -10,7 +14,11 @@ import 'category_repository.dart';
 import 'daily_log_repository.dart';
 import 'daily_closure_repository.dart';
 import 'daily_plan_repository.dart';
+import 'key_result_check_in_repository.dart';
+import 'key_result_repository.dart';
 import 'motivation_phrase_repository.dart';
+import 'okr_cycle_repository.dart';
+import 'okr_objective_repository.dart';
 import 'user_settings_repository.dart';
 import 'weekly_goal_repository.dart';
 
@@ -21,6 +29,10 @@ class AppDataSnapshot {
     required this.dailyClosures,
     required this.dailyPlans,
     required this.weeklyGoals,
+    required this.okrCycles,
+    required this.okrObjectives,
+    required this.keyResults,
+    required this.keyResultCheckIns,
     required this.categories,
     required this.userSettings,
     required this.motivationPhrases,
@@ -32,6 +44,10 @@ class AppDataSnapshot {
   final List<DailyClosureEntry> dailyClosures;
   final List<DailyPlanSnapshot> dailyPlans;
   final List<WeeklyGoal> weeklyGoals;
+  final List<OkrCycle> okrCycles;
+  final List<OkrObjective> okrObjectives;
+  final List<KeyResult> keyResults;
+  final List<KeyResultCheckIn> keyResultCheckIns;
   final List<Category> categories;
   final UserSettings userSettings;
   final List<String> motivationPhrases;
@@ -45,6 +61,10 @@ class AppDataSnapshot {
       'dailyClosures': dailyClosures.map((e) => e.toMap()).toList(),
       'dailyPlans': dailyPlans.map((e) => e.toMap()).toList(),
       'weeklyGoals': weeklyGoals.map((e) => e.toMap()).toList(),
+      'okrCycles': okrCycles.map((e) => e.toMap()).toList(),
+      'okrObjectives': okrObjectives.map((e) => e.toMap()).toList(),
+      'keyResults': keyResults.map((e) => e.toMap()).toList(),
+      'keyResultCheckIns': keyResultCheckIns.map((e) => e.toMap()).toList(),
       'categories': categories.map((e) => e.toMap()).toList(),
       'userSettings': userSettings.toMap(),
       'motivationPhrases': motivationPhrases,
@@ -59,6 +79,10 @@ class AppDataRepository {
     required DailyClosureRepository dailyClosureRepository,
     required DailyPlanRepository dailyPlanRepository,
     required WeeklyGoalRepository weeklyGoalRepository,
+    required OkrCycleRepository okrCycleRepository,
+    required OkrObjectiveRepository okrObjectiveRepository,
+    required KeyResultRepository keyResultRepository,
+    required KeyResultCheckInRepository keyResultCheckInRepository,
     required CategoryRepository categoryRepository,
     required UserSettingsRepository userSettingsRepository,
     required MotivationPhraseRepository motivationPhraseRepository,
@@ -67,6 +91,10 @@ class AppDataRepository {
        _dailyClosureRepository = dailyClosureRepository,
        _dailyPlanRepository = dailyPlanRepository,
        _weeklyGoalRepository = weeklyGoalRepository,
+       _okrCycleRepository = okrCycleRepository,
+       _okrObjectiveRepository = okrObjectiveRepository,
+       _keyResultRepository = keyResultRepository,
+       _keyResultCheckInRepository = keyResultCheckInRepository,
        _categoryRepository = categoryRepository,
        _userSettingsRepository = userSettingsRepository,
        _motivationPhraseRepository = motivationPhraseRepository;
@@ -76,6 +104,10 @@ class AppDataRepository {
   final DailyClosureRepository _dailyClosureRepository;
   final DailyPlanRepository _dailyPlanRepository;
   final WeeklyGoalRepository _weeklyGoalRepository;
+  final OkrCycleRepository _okrCycleRepository;
+  final OkrObjectiveRepository _okrObjectiveRepository;
+  final KeyResultRepository _keyResultRepository;
+  final KeyResultCheckInRepository _keyResultCheckInRepository;
   final CategoryRepository _categoryRepository;
   final UserSettingsRepository _userSettingsRepository;
   final MotivationPhraseRepository _motivationPhraseRepository;
@@ -86,6 +118,10 @@ class AppDataRepository {
     final dailyClosures = await _dailyClosureRepository.getAll();
     final dailyPlans = await _dailyPlanRepository.getAll();
     final weeklyGoals = await _weeklyGoalRepository.getAll();
+    final okrCycles = await _okrCycleRepository.getAll();
+    final okrObjectives = await _okrObjectiveRepository.getAll();
+    final keyResults = await _keyResultRepository.getAll();
+    final keyResultCheckIns = await _keyResultCheckInRepository.getAll();
     final categories = await _categoryRepository.getAll();
     final userSettings = await _userSettingsRepository.get();
     final motivationPhrases = await _motivationPhraseRepository.getAll();
@@ -96,6 +132,10 @@ class AppDataRepository {
       dailyClosures: dailyClosures,
       dailyPlans: dailyPlans,
       weeklyGoals: weeklyGoals,
+      okrCycles: okrCycles,
+      okrObjectives: okrObjectives,
+      keyResults: keyResults,
+      keyResultCheckIns: keyResultCheckIns,
       categories: categories,
       userSettings: userSettings,
       motivationPhrases: motivationPhrases,
@@ -109,6 +149,10 @@ class AppDataRepository {
     required List<DailyClosureEntry> dailyClosures,
     required List<DailyPlanSnapshot> dailyPlans,
     required List<WeeklyGoal> weeklyGoals,
+    required List<OkrCycle> okrCycles,
+    required List<OkrObjective> okrObjectives,
+    required List<KeyResult> keyResults,
+    required List<KeyResultCheckIn> keyResultCheckIns,
     required List<Category> categories,
     required UserSettings userSettings,
     required List<String> motivationPhrases,
@@ -118,6 +162,10 @@ class AppDataRepository {
     await _dailyClosureRepository.clear();
     await _dailyPlanRepository.clear();
     await _weeklyGoalRepository.clear();
+    await _okrCycleRepository.clear();
+    await _okrObjectiveRepository.clear();
+    await _keyResultRepository.clear();
+    await _keyResultCheckInRepository.clear();
     await _categoryRepository.clear();
     await _userSettingsRepository.clear();
     await _motivationPhraseRepository.clearAll();
@@ -143,6 +191,18 @@ class AppDataRepository {
     for (final goal in weeklyGoals) {
       await _weeklyGoalRepository.upsert(goal);
     }
+    for (final cycle in okrCycles) {
+      await _okrCycleRepository.upsert(cycle);
+    }
+    for (final objective in okrObjectives) {
+      await _okrObjectiveRepository.upsert(objective);
+    }
+    for (final keyResult in keyResults) {
+      await _keyResultRepository.upsert(keyResult);
+    }
+    for (final checkIn in keyResultCheckIns) {
+      await _keyResultCheckInRepository.upsert(checkIn);
+    }
     await _userSettingsRepository.save(userSettings);
     await _motivationPhraseRepository.saveAll(motivationPhrases);
   }
@@ -153,6 +213,10 @@ class AppDataRepository {
     await _dailyClosureRepository.clear();
     await _dailyPlanRepository.clear();
     await _weeklyGoalRepository.clear();
+    await _okrCycleRepository.clear();
+    await _okrObjectiveRepository.clear();
+    await _keyResultRepository.clear();
+    await _keyResultCheckInRepository.clear();
     await _categoryRepository.clear();
     await _userSettingsRepository.clear();
     await _motivationPhraseRepository.clearAll();
