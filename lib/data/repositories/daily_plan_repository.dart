@@ -103,8 +103,25 @@ class DailyPlanRepository {
     return activities
         .where((activity) {
           if (respectCurrentActiveFlag && !activity.isActive) return false;
-          if (!activity.weekdays.contains(date.weekday)) return false;
-          return !activity.createdAt.isAfter(endOfDay);
+          if (activity.createdAt.isAfter(endOfDay)) return false;
+
+          switch (activity.recurrence) {
+            case ActivityRecurrence.daily:
+              return true;
+            case ActivityRecurrence.weeklyFixed:
+              return activity.weekdays.contains(date.weekday);
+            case ActivityRecurrence.oneOff:
+              final scheduled = activity.scheduledDate;
+              return scheduled != null &&
+                  scheduled.year == date.year &&
+                  scheduled.month == date.month &&
+                  scheduled.day == date.day;
+            case ActivityRecurrence.monthly:
+              return activity.scheduledDate?.day == date.day;
+            case ActivityRecurrence.weekly:
+            case ActivityRecurrence.flexible:
+              return false;
+          }
         })
         .map((activity) => activity.id)
         .toList();

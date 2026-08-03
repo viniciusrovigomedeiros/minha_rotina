@@ -136,6 +136,11 @@ class TodayActivityCard extends StatelessWidget {
 
   String _buildMeta() {
     final categoryName = category?.name ?? 'Sem categoria';
+    if (item.weeklyTargetCount != null && item.weeklyCompletedCount != null) {
+      final recommendation =
+          item.isSuggestedToday ? 'Sugerido hoje' : 'Pode compensar hoje';
+      return '$categoryName  ·  ${item.weeklyCompletedCount}/${item.weeklyTargetCount} na semana  ·  $recommendation';
+    }
     final timeLabel = TimeFormat.formatMinutesRange(
       item.activity.startMinutes,
       item.activity.endMinutes,

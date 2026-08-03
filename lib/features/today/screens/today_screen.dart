@@ -181,9 +181,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                if (todayState.items.isEmpty)
+                if (todayState.items.isEmpty &&
+                    todayState.weeklyGoalItems.isEmpty)
                   const EmptyTodayState()
-                else
+                else if (todayState.items.isNotEmpty)
                   Card(
                     child: Column(
                       children: [
@@ -251,6 +252,90 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                       ],
                     ),
                   ),
+                if (todayState.weeklyGoalItems.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Metas flexíveis da semana',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Aparecem até você bater a meta semanal, mesmo fora dos dias sugeridos.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Card(
+                    child: Column(
+                      children: [
+                        for (
+                          int index = 0;
+                          index < todayState.weeklyGoalItems.length;
+                          index++
+                        ) ...[
+                          Builder(
+                            builder: (context) {
+                              final item = todayState.weeklyGoalItems[index];
+                              final categoryMatch =
+                                  categories
+                                      .where(
+                                        (cat) =>
+                                            cat.id == item.activity.categoryId,
+                                      )
+                                      .toList();
+                              final category =
+                                  categoryMatch.isEmpty
+                                      ? null
+                                      : categoryMatch.first;
+
+                              return TodayActivityCard(
+                                item: item,
+                                category: category,
+                                onComplete:
+                                    (completion) => _setStatus(
+                                      ref,
+                                      item.activity.id,
+                                      ActivityStatus.completed,
+                                      context,
+                                      completionPayload: completion,
+                                    ),
+                                onSkip:
+                                    () => _setStatus(
+                                      ref,
+                                      item.activity.id,
+                                      ActivityStatus.skipped,
+                                      context,
+                                    ),
+                                onReset:
+                                    () => _setStatus(
+                                      ref,
+                                      item.activity.id,
+                                      ActivityStatus.pending,
+                                      context,
+                                    ),
+                                onOpen: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder:
+                                          (_) => ActivityFocusScreen(
+                                            activity: item.activity,
+                                          ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                          if (index < todayState.weeklyGoalItems.length - 1)
+                            const Divider(height: 1, thickness: 1),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Card(
                   child: Padding(

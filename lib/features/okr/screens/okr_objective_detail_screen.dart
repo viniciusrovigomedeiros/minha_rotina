@@ -29,6 +29,9 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
 
     final percent = (progress.progress * 100).round();
     final shortDateFormat = DateFormat('dd/MM');
+    final recurringInitiatives = _recurringActivities(progress.initiatives);
+    final nextActions = _nextActions(progress.initiatives);
+    final actionCount = recurringInitiatives.length + nextActions.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -54,7 +57,7 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
                   return AlertDialog(
                     title: const Text('Excluir objetivo?'),
                     content: Text(
-                      'O objetivo "${progress.objective.title}" será removido. As iniciativas continuarão salvas, mas serão desvinculadas.',
+                      'O objetivo "${progress.objective.title}" será removido. As ações continuarão salvas, mas serão desvinculadas.',
                     ),
                     actions: [
                       TextButton(
@@ -94,7 +97,7 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
           );
         },
         icon: const Icon(Icons.add_task_rounded),
-        label: const Text('Nova iniciativa'),
+        label: const Text('Nova ação'),
       ),
       body: SafeArea(
         top: false,
@@ -192,8 +195,8 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: _SummaryTile(
-                              label: 'Iniciativas',
-                              value: '${progress.initiatives.length}',
+                              label: 'Ações',
+                              value: '$actionCount',
                             ),
                           ),
                         ],
@@ -284,31 +287,70 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Iniciativas',
+                      'Iniciativas recorrentes',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Ações filhas para mover os resultados-chave.',
+                      'Cadências contínuas que movem o objetivo toda semana ou mês.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 12),
-                    if (progress.initiatives.isEmpty)
+                    if (recurringInitiatives.isEmpty)
                       Text(
-                        'Ainda não há iniciativas vinculadas.',
+                        'Ainda não há iniciativas recorrentes vinculadas.',
                         style: Theme.of(context).textTheme.bodySmall,
                       )
                     else
                       for (
                         int index = 0;
-                        index < progress.initiatives.length;
+                        index < recurringInitiatives.length;
                         index++
                       ) ...[
                         _InitiativeTile(
-                          activity: progress.initiatives[index],
-                          code: 'TASK-${index + 1}',
+                          activity: recurringInitiatives[index],
+                          code: 'INIT-${index + 1}',
                         ),
-                        if (index < progress.initiatives.length - 1)
+                        if (index < recurringInitiatives.length - 1)
+                          const Divider(height: 10),
+                      ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Próximas ações',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Passos pontuais que destravam o objetivo, sem cadência recorrente.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    if (nextActions.isEmpty)
+                      Text(
+                        'Nenhuma próxima ação definida.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
+                    else
+                      for (
+                        int index = 0;
+                        index < nextActions.length;
+                        index++
+                      ) ...[
+                        _InitiativeTile(
+                          activity: nextActions[index],
+                          code: 'ACT-${index + 1}',
+                        ),
+                        if (index < nextActions.length - 1)
                           const Divider(height: 10),
                       ],
                   ],
@@ -320,6 +362,39 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+List<Activity> _recurringActivities(List<Activity> activities) {
+  final items =
+      activities.where((item) => item.isRecurringForObjective).toList();
+  items.sort(_compareActivities);
+  return items;
+}
+
+List<Activity> _nextActions(List<Activity> activities) {
+  final items =
+      activities.where((item) => item.isOneOffObjectiveAction).toList();
+  items.sort((a, b) {
+    final aDate = a.scheduledDate;
+    final bDate = b.scheduledDate;
+    if (aDate != null && bDate != null) {
+      final compare = aDate.compareTo(bDate);
+      if (compare != 0) return compare;
+    } else if (aDate != null) {
+      return -1;
+    } else if (bDate != null) {
+      return 1;
+    }
+    return a.updatedAt.compareTo(b.updatedAt);
+  });
+  return items;
+}
+
+int _compareActivities(Activity a, Activity b) {
+  final aMinutes = a.startMinutes ?? 9999;
+  final bMinutes = b.startMinutes ?? 9999;
+  if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
+  return a.name.compareTo(b.name);
 }
 
 class _KeyResultTile extends StatelessWidget {

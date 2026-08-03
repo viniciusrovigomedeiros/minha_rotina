@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 
-enum ActivityRecurrence { oneOff, daily, weekly, monthly, flexible }
+enum ActivityRecurrence {
+  oneOff,
+  daily,
+  weekly,
+  weeklyFixed,
+  monthly,
+  flexible,
+}
 
 extension ActivityRecurrenceValues on ActivityRecurrence {
   String get value => name;
@@ -8,7 +15,8 @@ extension ActivityRecurrenceValues on ActivityRecurrence {
   String get label => switch (this) {
     ActivityRecurrence.oneOff => 'Única',
     ActivityRecurrence.daily => 'Diária',
-    ActivityRecurrence.weekly => 'Semanal',
+    ActivityRecurrence.weekly => 'Meta semanal flexível',
+    ActivityRecurrence.weeklyFixed => 'Semanal em dias fixos',
     ActivityRecurrence.monthly => 'Mensal',
     ActivityRecurrence.flexible => 'Sem recorrência',
   };
@@ -38,6 +46,7 @@ class Activity {
     this.description,
     this.startMinutes,
     this.endMinutes,
+    this.weeklyTargetCount,
     this.colorHex,
     this.iconKey,
     this.objectiveId,
@@ -53,6 +62,7 @@ class Activity {
   final int? startMinutes;
   final int? endMinutes;
   final List<int> weekdays;
+  final int? weeklyTargetCount;
   final int? colorHex;
   final String? iconKey;
   final String? objectiveId;
@@ -66,6 +76,22 @@ class Activity {
 
   Color? get colorOrNull => colorHex == null ? null : Color(colorHex!);
 
+  bool get isRecurringForObjective =>
+      recurrence == ActivityRecurrence.daily ||
+      recurrence == ActivityRecurrence.weekly ||
+      recurrence == ActivityRecurrence.weeklyFixed ||
+      recurrence == ActivityRecurrence.monthly;
+
+  bool get isOneOffObjectiveAction =>
+      recurrence == ActivityRecurrence.oneOff ||
+      recurrence == ActivityRecurrence.flexible;
+
+  int get effectiveWeeklyTargetCount {
+    if (recurrence != ActivityRecurrence.weekly) return 0;
+    final fallback = weekdays.isEmpty ? 1 : weekdays.length;
+    return (weeklyTargetCount ?? fallback).clamp(1, 7);
+  }
+
   Activity copyWith({
     String? id,
     String? name,
@@ -74,6 +100,7 @@ class Activity {
     int? startMinutes,
     int? endMinutes,
     List<int>? weekdays,
+    int? weeklyTargetCount,
     int? colorHex,
     String? iconKey,
     String? objectiveId,
@@ -92,6 +119,7 @@ class Activity {
     bool clearObjectiveId = false,
     bool clearKeyResultId = false,
     bool clearScheduledDate = false,
+    bool clearWeeklyTargetCount = false,
   }) {
     return Activity(
       id: id ?? this.id,
@@ -102,6 +130,10 @@ class Activity {
           clearStartMinutes ? null : startMinutes ?? this.startMinutes,
       endMinutes: clearEndMinutes ? null : endMinutes ?? this.endMinutes,
       weekdays: weekdays ?? this.weekdays,
+      weeklyTargetCount:
+          clearWeeklyTargetCount
+              ? null
+              : weeklyTargetCount ?? this.weeklyTargetCount,
       colorHex: clearColor ? null : colorHex ?? this.colorHex,
       iconKey: clearIcon ? null : iconKey ?? this.iconKey,
       objectiveId: clearObjectiveId ? null : objectiveId ?? this.objectiveId,
@@ -125,6 +157,7 @@ class Activity {
       'startMinutes': startMinutes,
       'endMinutes': endMinutes,
       'weekdays': weekdays,
+      'weeklyTargetCount': weeklyTargetCount,
       'colorHex': colorHex,
       'iconKey': iconKey,
       'objectiveId': objectiveId,
@@ -149,6 +182,7 @@ class Activity {
       startMinutes: map['startMinutes'] as int?,
       endMinutes: map['endMinutes'] as int?,
       weekdays: weekdays,
+      weeklyTargetCount: map['weeklyTargetCount'] as int?,
       colorHex: map['colorHex'] as int?,
       iconKey: map['iconKey'] as String?,
       objectiveId: map['objectiveId'] as String?,

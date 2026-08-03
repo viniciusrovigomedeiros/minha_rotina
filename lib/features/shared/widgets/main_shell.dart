@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../activities/screens/activities_screen.dart';
+import '../../execution/screens/execution_screen.dart';
 import '../../okr/screens/okr_home_screen.dart';
 import '../../okr/screens/okr_objectives_screen.dart';
 import '../../settings/screens/settings_screen.dart';
@@ -17,8 +17,8 @@ class _MainShellState extends State<MainShell> {
 
   static const _screens = [
     OkrHomeScreen(),
+    ExecutionScreen(),
     OkrObjectivesScreen(),
-    ActivitiesScreen(),
     SettingsScreen(),
   ];
 
@@ -30,19 +30,19 @@ class _MainShellState extends State<MainShell> {
         selectedIndex: _currentIndex,
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Início',
+            icon: Icon(Icons.track_changes_outlined),
+            selectedIcon: Icon(Icons.track_changes_rounded),
+            label: 'OKRs',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist_rounded),
+            label: 'Execução',
           ),
           NavigationDestination(
             icon: Icon(Icons.flag_outlined),
             selectedIcon: Icon(Icons.flag_rounded),
             label: 'Objetivos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.checklist_outlined),
-            selectedIcon: Icon(Icons.checklist_rounded),
-            label: 'Iniciativas',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

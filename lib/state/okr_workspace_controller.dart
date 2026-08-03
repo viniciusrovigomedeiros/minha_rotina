@@ -83,10 +83,18 @@ class OkrWorkspaceController extends AsyncNotifier<OkrWorkspaceState> {
             if (bDate == null) return 1;
             return aDate.compareTo(bDate);
           });
+    final activeObjectiveIds =
+        activeObjectives.map((item) => item.objective.id).toSet();
 
     final weekInitiatives =
         activities
-            .where((item) => item.objectiveId != null && item.isActive)
+            .where(
+              (item) =>
+                  item.objectiveId != null &&
+                  activeObjectiveIds.contains(item.objectiveId) &&
+                  item.isRecurringForObjective &&
+                  _isScheduledForCurrentWeek(item),
+            )
             .toList()
           ..sort(_compareActivities);
     final independentActivities =
@@ -151,4 +159,69 @@ class OkrWorkspaceController extends AsyncNotifier<OkrWorkspaceState> {
     }
     return a.name.compareTo(b.name);
   }
+
+  bool _isScheduledForCurrentWeek(Activity activity) {
+    if (!activity.isActive) return false;
+
+    final now = _normalize(DateTime.now());
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    switch (activity.recurrence) {
+      case ActivityRecurrence.daily:
+        return !activity.createdAt.isAfter(
+          DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59, 999),
+        );
+      case ActivityRecurrence.weekly:
+        return !activity.createdAt.isAfter(
+          DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59, 999),
+        );
+      case ActivityRecurrence.weeklyFixed:
+        return activity.weekdays.isNotEmpty &&
+            !activity.createdAt.isAfter(
+              DateTime(
+                weekEnd.year,
+                weekEnd.month,
+                weekEnd.day,
+                23,
+                59,
+                59,
+                999,
+              ),
+            );
+      case ActivityRecurrence.oneOff:
+        final scheduledDate = activity.scheduledDate;
+        if (scheduledDate == null) return false;
+        final normalized = _normalize(scheduledDate);
+        return !normalized.isBefore(weekStart) && !normalized.isAfter(weekEnd);
+      case ActivityRecurrence.monthly:
+        final scheduledDate = activity.scheduledDate;
+        if (scheduledDate == null) return false;
+        return _weekContainsDayOfMonth(
+          weekStart: weekStart,
+          weekEnd: weekEnd,
+          dayOfMonth: scheduledDate.day,
+        );
+      case ActivityRecurrence.flexible:
+        return false;
+    }
+  }
+
+  bool _weekContainsDayOfMonth({
+    required DateTime weekStart,
+    required DateTime weekEnd,
+    required int dayOfMonth,
+  }) {
+    for (
+      DateTime cursor = weekStart;
+      !cursor.isAfter(weekEnd);
+      cursor = cursor.add(const Duration(days: 1))
+    ) {
+      if (cursor.day == dayOfMonth) return true;
+    }
+    return false;
+  }
+
+  DateTime _normalize(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
 }

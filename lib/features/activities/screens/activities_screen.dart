@@ -152,11 +152,17 @@ class _ActivityListTile extends StatelessWidget {
           ],
           Text('Recorrência: ${activity.recurrence.label}'),
           const SizedBox(height: 2),
+          if (activity.recurrence == ActivityRecurrence.weekly) ...[
+            Text(
+              'Meta: ${activity.effectiveWeeklyTargetCount}x por semana',
+            ),
+            const SizedBox(height: 2),
+          ],
           Text(
             'Horário: ${TimeFormat.formatMinutesRange(activity.startMinutes, activity.endMinutes)}',
           ),
           const SizedBox(height: 2),
-          Text('Dias: ${_weekdaysLabel(activity.weekdays)}'),
+          Text('${_daysLabel(activity)}: ${_weekdaysLabel(activity)}'),
           const SizedBox(height: 2),
           Text(
             activity.isActive ? 'Status: ativa' : 'Status: inativa',
@@ -188,9 +194,22 @@ class _ActivityListTile extends StatelessWidget {
     );
   }
 
-  String _weekdaysLabel(List<int> weekdays) {
+  String _daysLabel(Activity activity) {
+    return switch (activity.recurrence) {
+      ActivityRecurrence.weekly => 'Sugestões',
+      ActivityRecurrence.weeklyFixed => 'Dias fixos',
+      _ => 'Dias',
+    };
+  }
+
+  String _weekdaysLabel(Activity activity) {
     const labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-    final sorted = [...weekdays]..sort();
+    final sorted = [...activity.weekdays]..sort();
+    if (sorted.isEmpty) {
+      return activity.recurrence == ActivityRecurrence.weekly
+          ? 'Sem sugestão fixa'
+          : '—';
+    }
     return sorted
         .where((day) => day >= 1 && day <= 7)
         .map((day) => labels[day - 1])

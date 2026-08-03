@@ -91,13 +91,63 @@ class NotificationService {
           continue;
         }
 
+        if (activity.recurrence == ActivityRecurrence.weekly) {
+          if (_hasRemainingWeeklyTarget(activity, dailyLogs)) {
+            await _plugin.zonedSchedule(
+              _notificationId(activity.id, 'weekly-flex'),
+              'Minha Rotina',
+              'Meta da semana pendente: ${activity.name}',
+              _nextDailyDate(activity.startMinutes!),
+              const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'minha_rotina_daily',
+                  'Atividades diárias',
+                  channelDescription: 'Lembretes de atividades da rotina',
+                  importance: Importance.high,
+                  priority: Priority.high,
+                ),
+                iOS: DarwinNotificationDetails(),
+              ),
+              uiLocalNotificationDateInterpretation:
+                  UILocalNotificationDateInterpretation.absoluteTime,
+              matchDateTimeComponents: DateTimeComponents.time,
+              androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            );
+          }
+          continue;
+        }
+
+        if (activity.recurrence == ActivityRecurrence.daily) {
+          await _plugin.zonedSchedule(
+            _notificationId(activity.id, 'daily'),
+            'Minha Rotina',
+            'Hora de: ${activity.name}',
+            _nextDailyDate(activity.startMinutes!),
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'minha_rotina_daily',
+                'Atividades diárias',
+                channelDescription: 'Lembretes de atividades da rotina',
+                importance: Importance.high,
+                priority: Priority.high,
+              ),
+              iOS: DarwinNotificationDetails(),
+            ),
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+            matchDateTimeComponents: DateTimeComponents.time,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          );
+          continue;
+        }
+
         for (final weekday in activity.weekdays) {
           final when = _nextDateForWeekday(
             weekday: weekday,
             startMinutes: activity.startMinutes!,
           );
 
-          final id = _notificationId(activity.id, weekday);
+          final id = _notificationId(activity.id, '$weekday');
 
           await _plugin.zonedSchedule(
             id,
@@ -241,8 +291,8 @@ class NotificationService {
     return scheduled;
   }
 
-  int _notificationId(String activityId, int weekday) {
-    final raw = '$activityId-$weekday'.hashCode;
+  int _notificationId(String activityId, String suffix) {
+    final raw = '$activityId-$suffix'.hashCode;
     return raw.abs() % 2147483646;
   }
 
@@ -265,6 +315,28 @@ class NotificationService {
     }
 
     return scheduled;
+  }
+
+  bool _hasRemainingWeeklyTarget(
+    Activity activity,
+    List<DailyActivityLog> dailyLogs,
+  ) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    final completedCount =
+        dailyLogs.where((log) {
+          if (log.activityId != activity.id ||
+              log.status.name != 'completed') {
+            return false;
+          }
+          final date = DateTime.parse(log.dayKey);
+          return !date.isBefore(weekStart) && !date.isAfter(weekEnd);
+        }).length;
+
+    return completedCount < activity.effectiveWeeklyTargetCount;
   }
 
   String _buildBedtimePhrase({

@@ -5,8 +5,13 @@ import 'package:intl/intl.dart';
 import '../../../core/utils/okr_progress_utils.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../data/models/activity.dart';
+import '../../../data/models/activity_status.dart';
+import '../../../state/activities_controller.dart';
 import '../../../state/okr_management_controller.dart';
 import '../../../state/okr_workspace_controller.dart';
+import '../../../state/today_controller.dart';
+import '../../activities/screens/activity_form_screen.dart';
+import '../../shared/widgets/completion_quality_sheet.dart';
 import '../widgets/okr_check_in_sheet.dart';
 import 'okr_cycles_screen.dart';
 import 'okr_objective_detail_screen.dart';
@@ -131,90 +136,25 @@ class OkrHomeScreen extends ConsumerWidget {
                     ) ...[
                       _ObjectivePreviewCard(
                         progress: workspace.activeObjectives[index],
+                        ref: ref,
                       ),
                       if (index < workspace.activeObjectives.take(3).length - 1)
                         const SizedBox(height: 10),
                     ],
-                  const SizedBox(height: 12),
-                  _SectionHeader(
-                    title: 'Resultados-chave pendentes de check-in',
-                  ),
-                  const SizedBox(height: 8),
-                  if (workspace.staleKeyResults.isEmpty)
-                    const _EmptyCard(
-                      text:
-                          'Nenhum resultado-chave está precisando de atualização agora.',
-                    )
-                  else
-                    Card(
-                      child: Column(
-                        children: [
-                          for (
-                            int index = 0;
-                            index < workspace.staleKeyResults.take(5).length;
-                            index++
-                          ) ...[
-                            Builder(
-                              builder: (context) {
-                                final stale = workspace.staleKeyResults[index];
-                                final objectiveProgress =
-                                    _findObjectiveForKeyResult(
-                                      workspace.activeObjectives,
-                                      stale.keyResult.id,
-                                    );
-                                final lastCheckInAt =
-                                    stale.keyResult.lastCheckInAt;
-                                final updateLabel =
-                                    lastCheckInAt == null
-                                        ? 'Nunca atualizado'
-                                        : 'Último check-in em ${DateFormat('dd/MM/yyyy').format(lastCheckInAt)}';
-
-                                return _HomeHierarchyTile(
-                                  icon: Icons.track_changes_rounded,
-                                  code: 'KR-${index + 1}',
-                                  title: stale.keyResult.title,
-                                  subtitle:
-                                      objectiveProgress == null
-                                          ? updateLabel
-                                          : '${objectiveProgress.objective.title} • $updateLabel',
-                                  trailing:
-                                      objectiveProgress == null
-                                          ? null
-                                          : const Icon(
-                                            Icons.chevron_right_rounded,
-                                          ),
-                                  onTap:
-                                      objectiveProgress == null
-                                          ? null
-                                          : () {
-                                            _openObjectiveCheckInSheet(
-                                              context: context,
-                                              ref: ref,
-                                              progress: objectiveProgress,
-                                              focusKeyResultId:
-                                                  stale.keyResult.id,
-                                            );
-                                          },
-                                );
-                              },
-                            ),
-                            if (index <
-                                workspace.staleKeyResults.take(5).length - 1)
-                              const Divider(height: 1),
-                          ],
-                        ],
-                      ),
-                    ),
                   const SizedBox(height: 12),
                   _SectionHeader(title: 'Iniciativas da semana'),
                   const SizedBox(height: 8),
                   if (workspace.weekInitiatives.isEmpty)
                     const _EmptyCard(
                       text:
-                          'Nenhuma iniciativa vinculada a objetivos por enquanto.',
+                          'Nenhuma iniciativa recorrente dos objetivos está programada para esta semana.',
                     )
                   else
-                    _ActivityCardList(activities: workspace.weekInitiatives),
+                    _ActivityCardList(
+                      activities: workspace.weekInitiatives,
+                      compact: true,
+                      ref: ref,
+                    ),
                   const SizedBox(height: 12),
                   _SectionHeader(title: 'Tarefas independentes'),
                   const SizedBox(height: 8),
@@ -226,6 +166,7 @@ class OkrHomeScreen extends ConsumerWidget {
                   else
                     _ActivityCardList(
                       activities: workspace.independentActivities,
+                      ref: ref,
                     ),
                 ],
               ),
@@ -259,107 +200,234 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _ObjectivePreviewCard extends StatelessWidget {
-  const _ObjectivePreviewCard({required this.progress});
+  const _ObjectivePreviewCard({required this.progress, required this.ref});
 
   final OkrObjectiveProgress progress;
+  final WidgetRef ref;
 
   @override
   Widget build(BuildContext context) {
     final percent = (progress.progress * 100).round();
+    final pendingCount = progress.staleKeyResultsCount;
+    final recurringInitiatives = _recurringActivitiesForObjective(
+      progress.initiatives,
+    );
+    final nextActions = _nextActionsForObjective(progress.initiatives);
 
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder:
-                  (_) => OkrObjectiveDetailScreen(
-                    objectiveId: progress.objective.id,
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                const _TypeBadge(label: 'OBJ'),
+                _HomeMetaPill(label: progress.cycle.name),
+              ],
             ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  const _TypeBadge(label: 'OBJ'),
-                  _HomeMetaPill(label: progress.cycle.name),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _PreviewLeadingIcon(icon: Icons.flag_rounded),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'OBJ',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
-                          ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _PreviewLeadingIcon(icon: Icons.flag_rounded),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'OBJ',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          progress.objective.title,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        progress.objective.title,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (_) => OkrObjectiveDetailScreen(
+                              objectiveId: progress.objective.id,
+                            ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.chevron_right_rounded),
+                  tooltip: 'Ver objetivo',
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: progress.progress,
+                    minHeight: 8,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$percent%',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _HomeMetricChip(label: '${progress.keyResults.length} KRs'),
+                _HomeMetricChip(
+                  label: '${recurringInitiatives.length} iniciativas',
+                ),
+                if (nextActions.isNotEmpty)
+                  _HomeMetricChip(
+                    label: '${nextActions.length} próximas ações',
+                  ),
+                if (pendingCount > 0)
+                  _HomeMetricChip(
+                    label: '$pendingCount pendente(s) de check-in',
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (progress.keyResults.isNotEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      _openObjectiveCheckInSheet(
+                        context: context,
+                        ref: ref,
+                        progress: progress,
+                      );
+                    },
+                    icon: const Icon(Icons.edit_calendar_rounded, size: 18),
+                    label: Text(
+                      pendingCount > 0 ? 'Fazer check-in' : 'Atualizar KRs',
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: progress.progress,
-                      minHeight: 8,
-                    ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder:
+                            (_) => OkrObjectiveDetailScreen(
+                              objectiveId: progress.objective.id,
+                            ),
+                      ),
+                    );
+                  },
+                  child: const Text('Ver detalhes'),
+                ),
+              ],
+            ),
+            if (progress.keyResults.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+              Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  key: PageStorageKey(
+                    'objective-home-${progress.objective.id}',
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '$percent%',
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                  title: Text(
+                    'Resultados-chave',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _HomeMetricChip(label: '${progress.keyResults.length} KRs'),
-                  _HomeMetricChip(
-                    label: '${progress.initiatives.length} iniciativas',
+                  subtitle: Text(
+                    pendingCount > 0
+                        ? '$pendingCount pendente(s) para atualizar esta semana'
+                        : 'Tudo em dia neste objetivo',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  if (progress.staleKeyResultsCount > 0)
-                    _HomeMetricChip(
-                      label:
-                          '${progress.staleKeyResultsCount} pendente(s) de check-in',
-                    ),
-                ],
+                  children: [
+                    for (
+                      int index = 0;
+                      index < progress.keyResults.length;
+                      index++
+                    )
+                      _ObjectiveKeyResultTile(
+                        progress: progress.keyResults[index],
+                        code: 'KR-${index + 1}',
+                        onTap: () {
+                          _openObjectiveCheckInSheet(
+                            context: context,
+                            ref: ref,
+                            progress: progress,
+                            focusKeyResultId:
+                                progress.keyResults[index].keyResult.id,
+                          );
+                        },
+                        showDivider: index < progress.keyResults.length - 1,
+                      ),
+                  ],
+                ),
               ),
             ],
-          ),
+            if (nextActions.isNotEmpty) ...[
+              const Divider(height: 1),
+              Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  key: PageStorageKey(
+                    'objective-actions-home-${progress.objective.id}',
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                  title: Text(
+                    'Próximas ações',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${nextActions.length} passo(s) pontual(is) ligado(s) a este objetivo',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  children: [
+                    for (int index = 0; index < nextActions.length; index++)
+                      _ObjectiveActionTile(
+                        activity: nextActions[index],
+                        code: 'ACT-${index + 1}',
+                        ref: ref,
+                        showDivider: index < nextActions.length - 1,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -458,10 +526,102 @@ class _HomeMetricChip extends StatelessWidget {
   }
 }
 
+class _ObjectiveKeyResultTile extends StatelessWidget {
+  const _ObjectiveKeyResultTile({
+    required this.progress,
+    required this.code,
+    required this.onTap,
+    required this.showDivider,
+  });
+
+  final KeyResultProgress progress;
+  final String code;
+  final VoidCallback onTap;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final lastCheckInAt = progress.keyResult.lastCheckInAt;
+    final updateLabel =
+        lastCheckInAt == null
+            ? 'Nunca atualizado'
+            : 'Último check-in em ${DateFormat('dd/MM').format(lastCheckInAt)}';
+
+    return Column(
+      children: [
+        _HomeHierarchyTile(
+          icon: Icons.track_changes_rounded,
+          code: code,
+          title: progress.keyResult.title,
+          subtitle:
+              '${OkrProgressUtils.formatValue(progress.keyResult, progress.keyResult.currentValue)} de ${OkrProgressUtils.formatValue(progress.keyResult, progress.keyResult.targetValue)} • $updateLabel',
+          trailing:
+              progress.needsUpdate
+                  ? const _PendingInlineBadge()
+                  : const Icon(Icons.chevron_right_rounded),
+          onTap: onTap,
+        ),
+        if (showDivider) const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+class _ObjectiveActionTile extends StatelessWidget {
+  const _ObjectiveActionTile({
+    required this.activity,
+    required this.code,
+    required this.ref,
+    required this.showDivider,
+  });
+
+  final Activity activity;
+  final String code;
+  final WidgetRef ref;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle =
+        activity.scheduledDate == null
+            ? activity.recurrence.label
+            : '${activity.recurrence.label} • ${DateFormat('dd/MM').format(activity.scheduledDate!)}';
+
+    return Column(
+      children: [
+        _CompactActivityTile(
+          activity: activity,
+          code: code,
+          title: activity.name,
+          subtitle: subtitle,
+          onTap: () {
+            _editActivity(context: context, ref: ref, activity: activity);
+          },
+          onSelected: (action) {
+            _handleActivityAction(
+              context: context,
+              ref: ref,
+              activity: activity,
+              action: action,
+            );
+          },
+        ),
+        if (showDivider) const Divider(height: 1),
+      ],
+    );
+  }
+}
+
 class _ActivityCardList extends StatelessWidget {
-  const _ActivityCardList({required this.activities});
+  const _ActivityCardList({
+    required this.activities,
+    required this.ref,
+    this.compact = false,
+  });
 
   final List<Activity> activities;
+  final WidgetRef ref;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -469,22 +629,146 @@ class _ActivityCardList extends StatelessWidget {
       child: Column(
         children: [
           for (int index = 0; index < activities.length; index++) ...[
-            _HomeHierarchyTile(
-              icon:
-                  activities[index].objectiveId == null
-                      ? Icons.checklist_rounded
-                      : Icons.check_box_outlined,
-              code:
-                  activities[index].objectiveId == null
-                      ? 'TASK-${index + 1}'
-                      : 'INIT-${index + 1}',
-              title: activities[index].name,
-              subtitle:
-                  '${activities[index].recurrence.label} • ${TimeFormat.formatMinutesRange(activities[index].startMinutes, activities[index].endMinutes)}',
-            ),
+            if (compact)
+              _CompactActivityTile(
+                activity: activities[index],
+                code: 'INIT-${index + 1}',
+                title: activities[index].name,
+                subtitle:
+                    '${activities[index].recurrence.label} • ${TimeFormat.formatMinutesRange(activities[index].startMinutes, activities[index].endMinutes)}',
+                onTap: () {
+                  _editActivity(
+                    context: context,
+                    ref: ref,
+                    activity: activities[index],
+                  );
+                },
+                onSelected: (action) {
+                  _handleActivityAction(
+                    context: context,
+                    ref: ref,
+                    activity: activities[index],
+                    action: action,
+                  );
+                },
+              )
+            else
+              _HomeHierarchyTile(
+                icon:
+                    activities[index].objectiveId == null
+                        ? Icons.checklist_rounded
+                        : Icons.check_box_outlined,
+                code:
+                    activities[index].objectiveId == null
+                        ? 'TASK-${index + 1}'
+                        : 'INIT-${index + 1}',
+                title: activities[index].name,
+                subtitle:
+                    '${activities[index].recurrence.label} • ${TimeFormat.formatMinutesRange(activities[index].startMinutes, activities[index].endMinutes)}',
+                trailing: _ActivityActionsButton(
+                  onSelected: (action) {
+                    _handleActivityAction(
+                      context: context,
+                      ref: ref,
+                      activity: activities[index],
+                      action: action,
+                    );
+                  },
+                ),
+                onTap: () {
+                  _editActivity(
+                    context: context,
+                    ref: ref,
+                    activity: activities[index],
+                  );
+                },
+              ),
             if (index < activities.length - 1) const Divider(height: 1),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _CompactActivityTile extends StatelessWidget {
+  const _CompactActivityTile({
+    required this.activity,
+    required this.code,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.onSelected,
+  });
+
+  final Activity activity;
+  final String code;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    code,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                _ActivityActionsButton(onSelected: onSelected),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityActionsButton extends StatelessWidget {
+  const _ActivityActionsButton({required this.onSelected});
+
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'Ações da iniciativa',
+      onSelected: onSelected,
+      itemBuilder:
+          (_) => const [
+            PopupMenuItem(value: 'complete', child: Text('Concluir hoje')),
+            PopupMenuItem(value: 'edit', child: Text('Editar')),
+            PopupMenuItem(value: 'delete', child: Text('Excluir')),
+          ],
+      child: const Padding(
+        padding: EdgeInsets.all(4),
+        child: Icon(Icons.more_horiz_rounded),
       ),
     );
   }
@@ -574,6 +858,28 @@ class _HomeHierarchyTile extends StatelessWidget {
   }
 }
 
+class _PendingInlineBadge extends StatelessWidget {
+  const _PendingInlineBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'Pendente',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.error,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyCard extends StatelessWidget {
   const _EmptyCard({required this.text});
 
@@ -588,19 +894,6 @@ class _EmptyCard extends StatelessWidget {
       ),
     );
   }
-}
-
-OkrObjectiveProgress? _findObjectiveForKeyResult(
-  List<OkrObjectiveProgress> objectives,
-  String keyResultId,
-) {
-  for (final objective in objectives) {
-    final hasMatch = objective.keyResults.any(
-      (item) => item.keyResult.id == keyResultId,
-    );
-    if (hasMatch) return objective;
-  }
-  return null;
 }
 
 Future<void> _openObjectiveCheckInSheet({
@@ -647,4 +940,108 @@ Future<void> _openObjectiveCheckInSheet({
       content: Text('Check-in salvo para "${progress.objective.title}".'),
     ),
   );
+}
+
+List<Activity> _recurringActivitiesForObjective(List<Activity> activities) {
+  final items =
+      activities.where((item) => item.isRecurringForObjective).toList();
+  items.sort(_sortActivitiesByTime);
+  return items;
+}
+
+List<Activity> _nextActionsForObjective(List<Activity> activities) {
+  final items =
+      activities.where((item) => item.isOneOffObjectiveAction).toList();
+  items.sort((a, b) {
+    final aDate = a.scheduledDate;
+    final bDate = b.scheduledDate;
+    if (aDate != null && bDate != null) {
+      final compare = aDate.compareTo(bDate);
+      if (compare != 0) return compare;
+    } else if (aDate != null) {
+      return -1;
+    } else if (bDate != null) {
+      return 1;
+    }
+    return b.updatedAt.compareTo(a.updatedAt);
+  });
+  return items;
+}
+
+int _sortActivitiesByTime(Activity a, Activity b) {
+  final aMinutes = a.startMinutes ?? 9999;
+  final bMinutes = b.startMinutes ?? 9999;
+  if (aMinutes != bMinutes) return aMinutes.compareTo(bMinutes);
+  return a.name.compareTo(b.name);
+}
+
+Future<void> _editActivity({
+  required BuildContext context,
+  required WidgetRef ref,
+  required Activity activity,
+}) async {
+  await Navigator.of(context).push<bool>(
+    MaterialPageRoute(builder: (_) => ActivityFormScreen(activity: activity)),
+  );
+  await ref.read(activitiesControllerProvider.notifier).reload();
+  ref.invalidate(okrWorkspaceControllerProvider);
+}
+
+Future<void> _handleActivityAction({
+  required BuildContext context,
+  required WidgetRef ref,
+  required Activity activity,
+  required String action,
+}) async {
+  if (action == 'edit') {
+    await _editActivity(context: context, ref: ref, activity: activity);
+    return;
+  }
+
+  if (action == 'delete') {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Excluir iniciativa?'),
+            content: Text('A iniciativa "${activity.name}" será removida.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Excluir'),
+              ),
+            ],
+          ),
+    );
+    if (confirm != true) return;
+
+    await ref.read(activitiesControllerProvider.notifier).delete(activity.id);
+    ref.invalidate(okrWorkspaceControllerProvider);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Iniciativa excluída.')));
+    return;
+  }
+
+  if (action == 'complete') {
+    final completion = await showCompletionQualitySheet(context);
+    if (completion == null) return;
+
+    await ref
+        .read(todayControllerProvider.notifier)
+        .updateStatus(
+          activityId: activity.id,
+          status: ActivityStatus.completed,
+          completionPayload: completion,
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('"${activity.name}" concluída hoje.')),
+    );
+  }
 }
