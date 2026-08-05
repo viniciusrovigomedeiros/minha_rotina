@@ -16,7 +16,6 @@ import 'daily_closure_repository.dart';
 import 'daily_plan_repository.dart';
 import 'key_result_check_in_repository.dart';
 import 'key_result_repository.dart';
-import 'motivation_phrase_repository.dart';
 import 'okr_cycle_repository.dart';
 import 'okr_objective_repository.dart';
 import 'user_settings_repository.dart';
@@ -35,7 +34,6 @@ class AppDataSnapshot {
     required this.keyResultCheckIns,
     required this.categories,
     required this.userSettings,
-    required this.motivationPhrases,
     required this.exportedAt,
   });
 
@@ -50,12 +48,11 @@ class AppDataSnapshot {
   final List<KeyResultCheckIn> keyResultCheckIns;
   final List<Category> categories;
   final UserSettings userSettings;
-  final List<String> motivationPhrases;
   final DateTime exportedAt;
 
   Map<String, dynamic> toMap() {
     return {
-      'meta': {'version': 1, 'exportedAt': exportedAt.toIso8601String()},
+      'meta': {'version': 2, 'exportedAt': exportedAt.toIso8601String()},
       'activities': activities.map((e) => e.toMap()).toList(),
       'dailyLogs': dailyLogs.map((e) => e.toMap()).toList(),
       'dailyClosures': dailyClosures.map((e) => e.toMap()).toList(),
@@ -67,7 +64,6 @@ class AppDataSnapshot {
       'keyResultCheckIns': keyResultCheckIns.map((e) => e.toMap()).toList(),
       'categories': categories.map((e) => e.toMap()).toList(),
       'userSettings': userSettings.toMap(),
-      'motivationPhrases': motivationPhrases,
     };
   }
 }
@@ -85,7 +81,6 @@ class AppDataRepository {
     required KeyResultCheckInRepository keyResultCheckInRepository,
     required CategoryRepository categoryRepository,
     required UserSettingsRepository userSettingsRepository,
-    required MotivationPhraseRepository motivationPhraseRepository,
   }) : _activityRepository = activityRepository,
        _dailyLogRepository = dailyLogRepository,
        _dailyClosureRepository = dailyClosureRepository,
@@ -96,8 +91,7 @@ class AppDataRepository {
        _keyResultRepository = keyResultRepository,
        _keyResultCheckInRepository = keyResultCheckInRepository,
        _categoryRepository = categoryRepository,
-       _userSettingsRepository = userSettingsRepository,
-       _motivationPhraseRepository = motivationPhraseRepository;
+       _userSettingsRepository = userSettingsRepository;
 
   final ActivityRepository _activityRepository;
   final DailyLogRepository _dailyLogRepository;
@@ -110,7 +104,6 @@ class AppDataRepository {
   final KeyResultCheckInRepository _keyResultCheckInRepository;
   final CategoryRepository _categoryRepository;
   final UserSettingsRepository _userSettingsRepository;
-  final MotivationPhraseRepository _motivationPhraseRepository;
 
   Future<AppDataSnapshot> snapshot() async {
     final activities = await _activityRepository.getAll();
@@ -124,7 +117,6 @@ class AppDataRepository {
     final keyResultCheckIns = await _keyResultCheckInRepository.getAll();
     final categories = await _categoryRepository.getAll();
     final userSettings = await _userSettingsRepository.get();
-    final motivationPhrases = await _motivationPhraseRepository.getAll();
 
     return AppDataSnapshot(
       activities: activities,
@@ -138,7 +130,6 @@ class AppDataRepository {
       keyResultCheckIns: keyResultCheckIns,
       categories: categories,
       userSettings: userSettings,
-      motivationPhrases: motivationPhrases,
       exportedAt: DateTime.now(),
     );
   }
@@ -155,7 +146,6 @@ class AppDataRepository {
     required List<KeyResultCheckIn> keyResultCheckIns,
     required List<Category> categories,
     required UserSettings userSettings,
-    required List<String> motivationPhrases,
   }) async {
     await _activityRepository.clear();
     await _dailyLogRepository.clear();
@@ -168,7 +158,6 @@ class AppDataRepository {
     await _keyResultCheckInRepository.clear();
     await _categoryRepository.clear();
     await _userSettingsRepository.clear();
-    await _motivationPhraseRepository.clearAll();
 
     final safeCategories =
         categories.isEmpty ? Category.defaults() : categories;
@@ -204,7 +193,6 @@ class AppDataRepository {
       await _keyResultCheckInRepository.upsert(checkIn);
     }
     await _userSettingsRepository.save(userSettings);
-    await _motivationPhraseRepository.saveAll(motivationPhrases);
   }
 
   Future<void> clearAll() async {
@@ -219,6 +207,5 @@ class AppDataRepository {
     await _keyResultCheckInRepository.clear();
     await _categoryRepository.clear();
     await _userSettingsRepository.clear();
-    await _motivationPhraseRepository.clearAll();
   }
 }

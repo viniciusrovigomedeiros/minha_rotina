@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/utils/okr_progress_utils.dart';
 import '../../../data/models/okr_objective.dart';
 import '../../../state/okr_workspace_controller.dart';
+import '../../shared/widgets/settings_action_button.dart';
 import 'okr_cycles_screen.dart';
 import 'okr_objective_detail_screen.dart';
 import 'okr_objective_form_screen.dart';
@@ -29,6 +30,7 @@ class OkrObjectivesScreen extends ConsumerWidget {
             icon: const Icon(Icons.timeline_outlined),
             tooltip: 'Ciclos',
           ),
+          const SettingsActionButton(),
         ],
       ),
       body: SafeArea(

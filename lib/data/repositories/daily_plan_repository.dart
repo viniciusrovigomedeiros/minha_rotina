@@ -1,5 +1,7 @@
+import '../../core/utils/activity_planning_utils.dart';
 import '../../core/utils/date_utils.dart';
 import '../models/activity.dart';
+import '../models/daily_activity_log.dart';
 import '../models/daily_plan_snapshot.dart';
 import '../services/local_storage_service.dart';
 
@@ -37,6 +39,7 @@ class DailyPlanRepository {
   Future<DailyPlanSnapshot> snapshotForDay({
     required DateTime date,
     required List<Activity> activities,
+    required List<DailyActivityLog> logs,
   }) async {
     final normalizedDate = DateTime(date.year, date.month, date.day);
     final today = DateTime.now();
@@ -46,9 +49,10 @@ class DailyPlanRepository {
     if (normalizedDate.isAfter(normalizedToday)) {
       return _buildSnapshot(
         dayKey: dayKey,
-        activityIds: _derivePlannedActivityIds(
+        activityIds: ActivityPlanningUtils.plannedActivityIdsForDay(
           date: normalizedDate,
           activities: activities,
+          logs: logs,
           respectCurrentActiveFlag: true,
         ),
       );
@@ -57,9 +61,10 @@ class DailyPlanRepository {
     if (normalizedDate.isAtSameMomentAs(normalizedToday)) {
       final snapshot = _buildSnapshot(
         dayKey: dayKey,
-        activityIds: _derivePlannedActivityIds(
+        activityIds: ActivityPlanningUtils.plannedActivityIdsForDay(
           date: normalizedDate,
           activities: activities,
+          logs: logs,
           respectCurrentActiveFlag: true,
         ),
       );
@@ -68,15 +73,28 @@ class DailyPlanRepository {
     }
 
     final existing = await findByDayKey(dayKey);
-    if (existing != null) return existing;
+    final derivedActivityIds = ActivityPlanningUtils.plannedActivityIdsForDay(
+      date: normalizedDate,
+      activities: activities,
+      logs: logs,
+      respectCurrentActiveFlag: false,
+    );
+    if (existing != null) {
+      final existingIds = [...existing.activityIds]..sort();
+      final derivedIds = [...derivedActivityIds]..sort();
+      if (_sameIds(existingIds, derivedIds)) return existing;
+
+      final refreshed = _buildSnapshot(
+        dayKey: dayKey,
+        activityIds: derivedActivityIds,
+      );
+      await save(refreshed);
+      return refreshed;
+    }
 
     final snapshot = _buildSnapshot(
       dayKey: dayKey,
-      activityIds: _derivePlannedActivityIds(
-        date: normalizedDate,
-        activities: activities,
-        respectCurrentActiveFlag: false,
-      ),
+      activityIds: derivedActivityIds,
     );
     await save(snapshot);
     return snapshot;
@@ -93,37 +111,11 @@ class DailyPlanRepository {
     );
   }
 
-  List<String> _derivePlannedActivityIds({
-    required DateTime date,
-    required List<Activity> activities,
-    required bool respectCurrentActiveFlag,
-  }) {
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
-
-    return activities
-        .where((activity) {
-          if (respectCurrentActiveFlag && !activity.isActive) return false;
-          if (activity.createdAt.isAfter(endOfDay)) return false;
-
-          switch (activity.recurrence) {
-            case ActivityRecurrence.daily:
-              return true;
-            case ActivityRecurrence.weeklyFixed:
-              return activity.weekdays.contains(date.weekday);
-            case ActivityRecurrence.oneOff:
-              final scheduled = activity.scheduledDate;
-              return scheduled != null &&
-                  scheduled.year == date.year &&
-                  scheduled.month == date.month &&
-                  scheduled.day == date.day;
-            case ActivityRecurrence.monthly:
-              return activity.scheduledDate?.day == date.day;
-            case ActivityRecurrence.weekly:
-            case ActivityRecurrence.flexible:
-              return false;
-          }
-        })
-        .map((activity) => activity.id)
-        .toList();
+  bool _sameIds(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) return false;
+    }
+    return true;
   }
 }

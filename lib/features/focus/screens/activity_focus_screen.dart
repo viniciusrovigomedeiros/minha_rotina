@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/utils/motivation_utils.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../data/models/activity.dart';
 import '../../../data/models/activity_status.dart';
 import '../../shared/widgets/completion_quality_sheet.dart';
-import '../../../state/motivation_phrases_controller.dart';
 import '../../../state/today_controller.dart';
 
 class ActivityFocusScreen extends ConsumerWidget {
@@ -16,15 +14,6 @@ class ActivityFocusScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
-    final phrases = ref.watch(motivationPhrasesControllerProvider).valueOrNull;
-    final phrase =
-        phrases == null
-            ? MotivationUtils.phraseForDay(now)
-            : (phrases.isEmpty
-                ? 'Sem frase motivacional definida.'
-                : MotivationUtils.phraseForDay(now, phrases: phrases));
-
     return Scaffold(
       appBar: AppBar(title: const Text('Foco da atividade')),
       body: SafeArea(
@@ -54,8 +43,6 @@ class ActivityFocusScreen extends ConsumerWidget {
                     ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  const SizedBox(height: 10),
-                  Text(phrase, style: Theme.of(context).textTheme.bodySmall),
                   const Spacer(),
                   SizedBox(
                     width: double.infinity,

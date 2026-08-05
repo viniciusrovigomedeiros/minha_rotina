@@ -1,6 +1,6 @@
 # Minha Rotina
 
-Aplicativo Flutter para controle pessoal de atividades diárias, com foco em clareza, motivação e evolução contínua.
+Aplicativo Flutter para controle pessoal de atividades diárias, com foco em clareza e evolução contínua.
 
 ## Tecnologias
 
@@ -75,7 +75,6 @@ lib/
 
 - Tela Hoje com:
   - saudação personalizada
-  - frase motivacional
   - data atual
   - card de progresso diário
   - lista de atividades do dia
@@ -123,7 +122,6 @@ lib/
   - detalhes da atividade
   - botão grande para concluir
   - botão para pular
-  - mensagem motivacional
 - Melhorias de UX:
   - feedback imediato via snackbars
   - navegação por abas

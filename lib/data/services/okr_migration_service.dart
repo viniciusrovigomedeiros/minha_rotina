@@ -8,7 +8,9 @@ class OkrMigrationService {
   OkrMigrationService();
 
   static const String _freshStartKey = 'okr_fresh_start_v2';
-  static const String _navalhaShowcaseSeedKey = 'manual_seed_navalha_launch_v1';
+  static const String _starterSeedKey = 'manual_seed_starter_objective_v1';
+  static const String _legacyNavalhaShowcaseSeedKey =
+      'manual_seed_navalha_launch_v1';
 
   Future<void> ensureInitialized() async {
     final metadata = LocalStorageService.metadataBox;
@@ -24,7 +26,7 @@ class OkrMigrationService {
     }
 
     await _ensureSeedCycles(referenceDate: now);
-    await _ensureNavalhaShowcaseObjective(referenceDate: now);
+    await _ensureStarterObjective(referenceDate: now);
   }
 
   static List<OkrCycle> buildQuarterlyCyclesForYear(
@@ -74,37 +76,42 @@ class OkrMigrationService {
     }
   }
 
-  Future<void> _ensureNavalhaShowcaseObjective({
+  Future<void> _ensureStarterObjective({
     required DateTime referenceDate,
   }) async {
     final metadata = LocalStorageService.metadataBox;
-    if (metadata.containsKey(_navalhaShowcaseSeedKey)) return;
+    if (metadata.containsKey(_starterSeedKey) ||
+        metadata.containsKey(_legacyNavalhaShowcaseSeedKey)) {
+      return;
+    }
 
-    const cycleId = 'cycle_2026_q3';
+    final cycleId = _currentQuarterCycleId(referenceDate);
     final cycleRaw = LocalStorageService.okrCyclesBox.get(cycleId);
     if (cycleRaw == null) return;
+    final cycle = OkrCycle.fromMap(Map<String, dynamic>.from(cycleRaw));
 
-    const objectiveId = 'objective_navalha_launch_q3_2026';
-    const kr1Id = 'kr_navalha_launch_q3_2026_1';
-    const kr2Id = 'kr_navalha_launch_q3_2026_2';
-    const kr3Id = 'kr_navalha_launch_q3_2026_3';
-    const kr4Id = 'kr_navalha_launch_q3_2026_4';
+    final objectiveId =
+        'objective_starter_${referenceDate.year}_q${_quarterForDate(referenceDate)}';
+    final kr1Id = '${objectiveId}_kr_1';
+    final kr2Id = '${objectiveId}_kr_2';
+    final kr3Id = '${objectiveId}_kr_3';
+    final kr4Id = '${objectiveId}_kr_4';
 
     final objective = OkrObjective(
       id: objectiveId,
-      title: 'Finalizar e lançar o Navalha',
+      title: 'Exemplo: organizar a rotina com mais clareza',
       description:
-          'Deixar o Navalha pronto, validado e preparado para iniciar as vendas em novembro de 2026.\n\n'
+          'Este objetivo serve como exemplo para mostrar como os OKRs funcionam no app. '
+          'Edite ou exclua quando quiser.\n\n'
           'Acompanhamento semanal:\n'
-          '- Ajustes concluídos\n'
-          '- Erros encontrados/corrigidos\n'
-          '- Testes realizados\n'
-          '- Feedbacks recebidos\n'
-          '- Principal pendência',
+          '- O que avancou na semana\n'
+          '- O que travou\n'
+          '- Qual e a prioridade da proxima semana\n'
+          '- O que vale ajustar na rotina',
       cycleId: cycleId,
-      categoryId: 'navalha',
-      startDate: DateTime(2026, 7, 1),
-      endDate: DateTime(2026, 9, 30),
+      categoryId: 'pessoal',
+      startDate: cycle.startDate,
+      endDate: cycle.endDate,
       status: OkrObjectiveStatus.active,
       checkInFrequencyDays: 7,
       createdAt: referenceDate,
@@ -115,8 +122,7 @@ class OkrMigrationService {
       KeyResult(
         id: kr1Id,
         objectiveId: objectiveId,
-        title:
-            'Finalizar 100% dos ajustes essenciais e eliminar os principais erros do aplicativo.',
+        title: 'Planejar a semana com clareza em 100% das semanas do ciclo.',
         measurementType: KeyResultMeasurementType.percentage,
         initialValue: 0,
         currentValue: 0,
@@ -130,12 +136,12 @@ class OkrMigrationService {
         id: kr2Id,
         objectiveId: objectiveId,
         title:
-            'Testar o sistema com pelo menos 5 barbearias ou usuários e corrigir os principais problemas de entendimento e usabilidade.',
+            'Concluir pelo menos 12 atividades prioritarias definidas no planejamento.',
         measurementType: KeyResultMeasurementType.quantity,
         initialValue: 0,
         currentValue: 0,
-        targetValue: 5,
-        unit: 'testes',
+        targetValue: 12,
+        unit: 'atividades',
         status: KeyResultStatus.active,
         createdAt: referenceDate,
         updatedAt: referenceDate,
@@ -144,12 +150,12 @@ class OkrMigrationService {
         id: kr3Id,
         objectiveId: objectiveId,
         title:
-            'Definir e implementar o método de pagamento definitivo, mantendo Mercado Pago ou migrando para Asaas.',
-        measurementType: KeyResultMeasurementType.percentage,
+            'Fazer 8 revisoes semanais para ajustar prioridades e manter consistencia.',
+        measurementType: KeyResultMeasurementType.quantity,
         initialValue: 0,
         currentValue: 0,
-        targetValue: 100,
-        unit: '%',
+        targetValue: 8,
+        unit: 'revisoes',
         status: KeyResultStatus.active,
         createdAt: referenceDate,
         updatedAt: referenceDate,
@@ -158,7 +164,7 @@ class OkrMigrationService {
         id: kr4Id,
         objectiveId: objectiveId,
         title:
-            'Ter a estrutura comercial pronta para começar as vendas: planos, preços, apresentação e processo de cadastro.',
+            'Manter 3 iniciativas recorrentes ativas que apoiem sua rotina principal.',
         measurementType: KeyResultMeasurementType.percentage,
         initialValue: 0,
         currentValue: 0,
@@ -172,13 +178,14 @@ class OkrMigrationService {
 
     final initiatives = [
       Activity(
-        id: 'initiative_navalha_launch_q3_2026_1',
-        name: 'Finalizar os ajustes pendentes',
-        description: 'Concluir os ajustes essenciais do produto.',
-        categoryId: 'navalha',
+        id: '${objectiveId}_initiative_1',
+        name: 'Planejar as prioridades da semana',
+        description:
+            'Definir o que realmente precisa acontecer nos proximos dias.',
+        categoryId: 'pessoal',
         weekdays: const [],
-        colorHex: 0xFF259D9B,
-        iconKey: 'bolt',
+        colorHex: 0xFFCF6F89,
+        iconKey: 'calendar',
         objectiveId: objectiveId,
         keyResultId: kr1Id,
         recurrence: ActivityRecurrence.flexible,
@@ -188,12 +195,13 @@ class OkrMigrationService {
         updatedAt: referenceDate,
       ),
       Activity(
-        id: 'initiative_navalha_launch_q3_2026_2',
-        name: 'Fazer testes completos no app e na web',
-        description: 'Executar testes completos nos fluxos principais.',
-        categoryId: 'navalha',
+        id: '${objectiveId}_initiative_2',
+        name: 'Executar as atividades mais importantes',
+        description:
+            'Avancar nas entregas que foram definidas como prioridade.',
+        categoryId: 'pessoal',
         weekdays: const [],
-        colorHex: 0xFF259D9B,
+        colorHex: 0xFFCF6F89,
         iconKey: 'checklist',
         objectiveId: objectiveId,
         keyResultId: kr2Id,
@@ -204,29 +212,13 @@ class OkrMigrationService {
         updatedAt: referenceDate,
       ),
       Activity(
-        id: 'initiative_navalha_launch_q3_2026_3',
-        name: 'Coletar feedback de usuários reais',
-        description: 'Validar entendimento e usabilidade com usuários.',
-        categoryId: 'navalha',
+        id: '${objectiveId}_initiative_3',
+        name: 'Fazer uma revisao semanal',
+        description: 'Registrar progresso, bloqueios e proximos ajustes.',
+        categoryId: 'pessoal',
         weekdays: const [],
-        colorHex: 0xFF259D9B,
-        iconKey: 'chat',
-        objectiveId: objectiveId,
-        keyResultId: kr2Id,
-        recurrence: ActivityRecurrence.flexible,
-        isActive: true,
-        remindersEnabled: false,
-        createdAt: referenceDate,
-        updatedAt: referenceDate,
-      ),
-      Activity(
-        id: 'initiative_navalha_launch_q3_2026_4',
-        name: 'Decidir sobre Mercado Pago ou Asaas',
-        description: 'Escolher e implementar o gateway definitivo.',
-        categoryId: 'navalha',
-        weekdays: const [],
-        colorHex: 0xFF259D9B,
-        iconKey: 'payments',
+        colorHex: 0xFFCF6F89,
+        iconKey: 'target',
         objectiveId: objectiveId,
         keyResultId: kr3Id,
         recurrence: ActivityRecurrence.flexible,
@@ -236,13 +228,29 @@ class OkrMigrationService {
         updatedAt: referenceDate,
       ),
       Activity(
-        id: 'initiative_navalha_launch_q3_2026_5',
-        name: 'Preparar material e abordagem de vendas',
-        description: 'Montar planos, preços e processo comercial.',
-        categoryId: 'navalha',
+        id: '${objectiveId}_initiative_4',
+        name: 'Bloquear tempo para a rotina principal',
+        description: 'Reservar espacos fixos na agenda para o que importa.',
+        categoryId: 'pessoal',
         weekdays: const [],
-        colorHex: 0xFF259D9B,
-        iconKey: 'work',
+        colorHex: 0xFFCF6F89,
+        iconKey: 'alarm',
+        objectiveId: objectiveId,
+        keyResultId: kr4Id,
+        recurrence: ActivityRecurrence.flexible,
+        isActive: true,
+        remindersEnabled: false,
+        createdAt: referenceDate,
+        updatedAt: referenceDate,
+      ),
+      Activity(
+        id: '${objectiveId}_initiative_5',
+        name: 'Eliminar uma fonte recorrente de distracao',
+        description: 'Remover ou simplificar algo que atrapalha sua execucao.',
+        categoryId: 'pessoal',
+        weekdays: const [],
+        colorHex: 0xFFCF6F89,
+        iconKey: 'clean',
         objectiveId: objectiveId,
         keyResultId: kr4Id,
         recurrence: ActivityRecurrence.flexible,
@@ -270,7 +278,7 @@ class OkrMigrationService {
       );
     }
 
-    await metadata.put(_navalhaShowcaseSeedKey, {
+    await metadata.put(_starterSeedKey, {
       'createdAt': referenceDate.toIso8601String(),
       'objectiveId': objectiveId,
     });
@@ -299,5 +307,14 @@ class OkrMigrationService {
       _ => 'Outubro a dezembro',
     };
     return '$names de $year';
+  }
+
+  static String _currentQuarterCycleId(DateTime date) {
+    final quarter = _quarterForDate(date);
+    return 'cycle_${date.year}_q$quarter';
+  }
+
+  static int _quarterForDate(DateTime date) {
+    return ((date.month - 1) ~/ 3) + 1;
   }
 }

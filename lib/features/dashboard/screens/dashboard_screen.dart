@@ -76,9 +76,9 @@ class DashboardScreen extends ConsumerWidget {
                                 : 'Foco na execução, não no volume',
                       ),
                       _MetricCard(
-                        title: 'Dias com fechamento diário',
-                        value: '${state.daysWithDailyClosure}/7',
-                        subtitle: 'Diário de reflexão concluído',
+                        title: 'Sequência atual',
+                        value: '${state.currentStreak} dias',
+                        subtitle: 'Dias seguidos com ao menos uma conclusão',
                       ),
                     ],
                   ),

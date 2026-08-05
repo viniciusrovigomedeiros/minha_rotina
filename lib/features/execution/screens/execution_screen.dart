@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../state/history_controller.dart';
+import '../../../state/today_controller.dart';
 import '../../../state/weekly_dashboard_controller.dart';
 import '../../activities/screens/activities_screen.dart';
 import '../../activities/screens/activity_form_screen.dart';
+import '../../shared/widgets/settings_action_button.dart';
 import '../../today/screens/today_screen.dart';
 
 enum _ExecutionView { today, week, month }
@@ -23,9 +26,13 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final todayAsync = ref.watch(todayControllerProvider);
+    final selectedDate = todayAsync.valueOrNull?.date ?? DateTime.now();
+    final isViewingToday = _isSameDay(selectedDate, DateTime.now());
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Execução'),
+        title: const Text('Iniciativas'),
         actions: [
           TextButton(
             onPressed: () {
@@ -35,12 +42,75 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
             },
             child: const Text('Todas as ações'),
           ),
+          const SettingsActionButton(),
         ],
       ),
       body: Column(
         children: [
+          if (_selectedView == _ExecutionView.today)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      TimeFormat.dateLabel(selectedDate),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          minimumSize: const Size(0, 34),
+                        ),
+                        onPressed: () => _pickDate(context, ref, selectedDate),
+                        icon: const Icon(
+                          Icons.calendar_month_rounded,
+                          size: 14,
+                        ),
+                        label: const Text('Escolher dia'),
+                      ),
+                      if (!isViewingToday)
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 34),
+                          ),
+                          onPressed:
+                              () => ref
+                                  .read(todayControllerProvider.notifier)
+                                  .selectDate(DateTime.now()),
+                          child: const Text('Hoje'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              _selectedView == _ExecutionView.today ? 12 : 8,
+              16,
+              0,
+            ),
             child: _ExecutionViewSwitcher(
               selectedView: _selectedView,
               onChanged: (view) {
@@ -71,6 +141,31 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
       ),
     );
   }
+
+  Future<void> _pickDate(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime selectedDate,
+  ) async {
+    final today = DateTime.now();
+    final lastDate = DateTime(today.year, today.month, today.day);
+    final firstDate = DateTime(2000);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate.isAfter(lastDate) ? lastDate : selectedDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      locale: const Locale('pt', 'BR'),
+    );
+
+    if (picked == null) return;
+    await ref.read(todayControllerProvider.notifier).selectDate(picked);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 }
 
 class _ExecutionWeekView extends ConsumerWidget {
@@ -95,7 +190,6 @@ class _ExecutionWeekView extends ConsumerWidget {
         );
         final summary = _PeriodExecutionSummary.fromDays(weekDays);
         final dashboard = dashboardAsync.valueOrNull;
-        final latestImprovement = _latestImprovementForRange(weekDays);
 
         return RefreshIndicator(
           onRefresh: () => _refreshInsights(ref),
@@ -154,37 +248,12 @@ class _ExecutionWeekView extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _MetricCard(
-                        title: 'Fechamentos',
-                        value:
-                            '${dashboard?.daysWithDailyClosure ?? summary.daysWithClosure}/7 dias',
+                        title: 'Dias ativos',
+                        value: '${summary.activeDays}/7 dias',
                       ),
                     ),
                   ],
                 ),
-                if (latestImprovement != null) ...[
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SectionTitle(
-                            title: 'Ajuste mais recente',
-                            subtitle:
-                                'Puxe o próximo dia já com a correção visível.',
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            latestImprovement,
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -198,7 +267,8 @@ class _ExecutionMonthView extends ConsumerStatefulWidget {
   const _ExecutionMonthView();
 
   @override
-  ConsumerState<_ExecutionMonthView> createState() => _ExecutionMonthViewState();
+  ConsumerState<_ExecutionMonthView> createState() =>
+      _ExecutionMonthViewState();
 }
 
 class _ExecutionMonthViewState extends ConsumerState<_ExecutionMonthView> {
@@ -232,7 +302,11 @@ class _ExecutionMonthViewState extends ConsumerState<_ExecutionMonthView> {
           1,
         );
         final monthStart = _selectedMonthStart;
-        final selectedMonthEnd = DateTime(monthStart.year, monthStart.month + 1, 0);
+        final selectedMonthEnd = DateTime(
+          monthStart.year,
+          monthStart.month + 1,
+          0,
+        );
         final monthDays = _buildRangeDays(
           historyDays: historyDays,
           start: monthStart,
@@ -296,9 +370,10 @@ class _ExecutionMonthViewState extends ConsumerState<_ExecutionMonthView> {
                           child: Center(
                             child: Text(
                               _capitalize(
-                                DateFormat("MMMM 'de' y", 'pt_BR').format(
-                                  monthStart,
-                                ),
+                                DateFormat(
+                                  "MMMM 'de' y",
+                                  'pt_BR',
+                                ).format(monthStart),
                               ),
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w800),
@@ -357,8 +432,8 @@ class _ExecutionMonthViewState extends ConsumerState<_ExecutionMonthView> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _MetricCard(
-                        title: 'Fechamentos',
-                        value: '${summary.daysWithClosure} dias',
+                        title: 'Dias ativos',
+                        value: '${summary.activeDays} dias',
                       ),
                     ),
                   ],
@@ -495,16 +570,16 @@ class _PeriodHeroCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
             Text(
               subtitle,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: scheme.outline,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.outline),
             ),
             const SizedBox(height: 14),
             ClipRRect(
@@ -724,18 +799,6 @@ class _WeekDayColumn extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 6),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color:
-                      day.hasClosure
-                          ? Theme.of(context).colorScheme.secondary
-                          : palette.foreground.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                ),
-              ),
             ],
           ),
         ),
@@ -774,11 +837,12 @@ class _MonthCalendar extends StatelessWidget {
                     child: Center(
                       child: Text(
                         weekLabels[index],
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.outline,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -882,7 +946,10 @@ class _ExecutionLegend extends StatelessWidget {
         _LegendItem(label: 'Completo', status: _ExecutionDayStatus.complete),
         _LegendItem(label: 'Parcial', status: _ExecutionDayStatus.partial),
         _LegendItem(label: 'Zerado', status: _ExecutionDayStatus.missed),
-        _LegendItem(label: 'Sem carga', status: _ExecutionDayStatus.nonePlanned),
+        _LegendItem(
+          label: 'Sem carga',
+          status: _ExecutionDayStatus.nonePlanned,
+        ),
       ],
     );
   }
@@ -922,16 +989,12 @@ class _ExecutionDayData {
     required this.planned,
     required this.completed,
     required this.future,
-    required this.hasClosure,
-    required this.improvementForTomorrow,
   });
 
   final DateTime date;
   final int planned;
   final int completed;
   final bool future;
-  final bool hasClosure;
-  final String? improvementForTomorrow;
 
   double get progress {
     if (future || planned == 0) return 0;
@@ -956,7 +1019,6 @@ class _PeriodExecutionSummary {
     required this.perfectDays,
     required this.missedDays,
     required this.activeDays,
-    required this.daysWithClosure,
     required this.currentStreak,
   });
 
@@ -965,7 +1027,6 @@ class _PeriodExecutionSummary {
   final int perfectDays;
   final int missedDays;
   final int activeDays;
-  final int daysWithClosure;
   final int currentStreak;
 
   double get progress => totalPlanned == 0 ? 0 : totalCompleted / totalPlanned;
@@ -978,7 +1039,6 @@ class _PeriodExecutionSummary {
     int perfectDays = 0;
     int missedDays = 0;
     int activeDays = 0;
-    int daysWithClosure = 0;
 
     for (final day in visibleDays) {
       totalCompleted += day.completed;
@@ -986,7 +1046,6 @@ class _PeriodExecutionSummary {
       if (day.planned > 0 && day.completed >= day.planned) perfectDays++;
       if (day.planned > 0 && day.completed == 0) missedDays++;
       if (day.completed > 0) activeDays++;
-      if (day.hasClosure) daysWithClosure++;
     }
 
     return _PeriodExecutionSummary(
@@ -995,7 +1054,6 @@ class _PeriodExecutionSummary {
       perfectDays: perfectDays,
       missedDays: missedDays,
       activeDays: activeDays,
-      daysWithClosure: daysWithClosure,
       currentStreak: _currentStreak(visibleDays),
     );
   }
@@ -1046,21 +1104,11 @@ List<_ExecutionDayData> _buildRangeDays({
         planned: summary?.totalPlanned ?? 0,
         completed: summary?.completed ?? 0,
         future: normalized.isAfter(today),
-        hasClosure: summary?.dailyClosure != null,
-        improvementForTomorrow: summary?.dailyClosure?.improvementForTomorrow,
       ),
     );
   }
 
   return result;
-}
-
-String? _latestImprovementForRange(List<_ExecutionDayData> days) {
-  for (final day in days.reversed) {
-    final text = day.improvementForTomorrow?.trim();
-    if (text != null && text.isNotEmpty) return text;
-  }
-  return null;
 }
 
 int _currentStreak(List<_ExecutionDayData> days) {
@@ -1130,9 +1178,9 @@ _DayPalette _paletteFor(BuildContext context, _ExecutionDayStatus status) {
       );
     case _ExecutionDayStatus.partial:
       return _DayPalette(
-        background: scheme.tertiary.withValues(alpha: 0.14),
-        foreground: scheme.tertiary,
-        border: scheme.tertiary.withValues(alpha: 0.24),
+        background: const Color(0xFFFFF4CC),
+        foreground: const Color(0xFFC58A00),
+        border: const Color(0xFFFFD766),
       );
     case _ExecutionDayStatus.missed:
       return _DayPalette(

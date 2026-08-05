@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/time_of_day_utils.dart';
 import '../../../state/activities_controller.dart';
-import '../../../state/daily_closures_controller.dart';
 import '../../../state/history_controller.dart';
 import '../../../state/providers.dart';
 import '../../../state/today_controller.dart';
@@ -166,86 +165,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               );
                         },
                       ),
-                      const Divider(height: 1, thickness: 1),
-                      _SettingsSwitchRow(
-                        title: 'Frase motivacional noturna',
-                        subtitle:
-                            'Antes de dormir, envia uma frase para te preparar para o próximo dia.',
-                        value: settings.bedtimeMotivationEnabled,
-                        enabled: settings.notificationsEnabled && !_isBusy,
-                        onChanged: (value) async {
-                          await ref
-                              .read(userSettingsControllerProvider.notifier)
-                              .updateBedtimeMotivationEnabled(value);
-                        },
-                      ),
-                      const Divider(height: 1, thickness: 1),
-                      _SettingsTimeRow(
-                        title: 'Horário da frase noturna',
-                        value: TimeOfDayUtils.format(
-                          TimeOfDayUtils.fromMinutes(
-                            settings.bedtimeMotivationMinutes,
-                          ),
-                        ),
-                        enabled:
-                            settings.notificationsEnabled &&
-                            settings.bedtimeMotivationEnabled &&
-                            !_isBusy,
-                        onTap: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDayUtils.fromMinutes(
-                              settings.bedtimeMotivationMinutes,
-                            ),
-                          );
-                          if (picked == null) return;
-                          await ref
-                              .read(userSettingsControllerProvider.notifier)
-                              .updateBedtimeMotivationMinutes(
-                                TimeOfDayUtils.toMinutes(picked),
-                              );
-                        },
-                      ),
-                      const Divider(height: 1, thickness: 1),
-                      _SettingsSwitchRow(
-                        title: 'Lembrete de fechamento diário',
-                        subtitle:
-                            'No fim do dia, lembra de preencher o diário de reflexão.',
-                        value: settings.dailyClosureReminderEnabled,
-                        enabled: settings.notificationsEnabled && !_isBusy,
-                        onChanged: (value) async {
-                          await ref
-                              .read(userSettingsControllerProvider.notifier)
-                              .updateDailyClosureReminderEnabled(value);
-                        },
-                      ),
-                      const Divider(height: 1, thickness: 1),
-                      _SettingsTimeRow(
-                        title: 'Horário do fechamento diário',
-                        value: TimeOfDayUtils.format(
-                          TimeOfDayUtils.fromMinutes(
-                            settings.dailyClosureReminderMinutes,
-                          ),
-                        ),
-                        enabled:
-                            settings.notificationsEnabled &&
-                            settings.dailyClosureReminderEnabled &&
-                            !_isBusy,
-                        onTap: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDayUtils.fromMinutes(
-                              settings.dailyClosureReminderMinutes,
-                            ),
-                          );
-                          if (picked == null) return;
-                          await ref
-                              .read(userSettingsControllerProvider.notifier)
-                              .updateDailyClosureReminderMinutes(
-                                TimeOfDayUtils.toMinutes(picked),
-                              );
-                        },
-                      ),
                     ],
                   ),
                 ),
@@ -341,7 +260,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(todayControllerProvider.notifier).reload();
     await ref.read(historyControllerProvider.notifier).reload();
     await ref.read(weeklyDashboardControllerProvider.notifier).reload();
-    await ref.read(dailyClosuresControllerProvider.notifier).reload();
   }
 
   void _showMessage(String message) {

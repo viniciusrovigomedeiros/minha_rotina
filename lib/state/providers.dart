@@ -8,7 +8,6 @@ import '../data/repositories/daily_log_repository.dart';
 import '../data/repositories/daily_plan_repository.dart';
 import '../data/repositories/key_result_check_in_repository.dart';
 import '../data/repositories/key_result_repository.dart';
-import '../data/repositories/motivation_phrase_repository.dart';
 import '../data/repositories/okr_cycle_repository.dart';
 import '../data/repositories/okr_objective_repository.dart';
 import '../data/repositories/user_settings_repository.dart';
@@ -62,12 +61,6 @@ final userSettingsRepositoryProvider = Provider<UserSettingsRepository>((ref) {
   return UserSettingsRepository();
 });
 
-final motivationPhraseRepositoryProvider = Provider<MotivationPhraseRepository>(
-  (ref) {
-    return MotivationPhraseRepository();
-  },
-);
-
 final appDataRepositoryProvider = Provider<AppDataRepository>((ref) {
   return AppDataRepository(
     activityRepository: ref.read(activityRepositoryProvider),
@@ -81,7 +74,6 @@ final appDataRepositoryProvider = Provider<AppDataRepository>((ref) {
     keyResultCheckInRepository: ref.read(keyResultCheckInRepositoryProvider),
     categoryRepository: ref.read(categoryRepositoryProvider),
     userSettingsRepository: ref.read(userSettingsRepositoryProvider),
-    motivationPhraseRepository: ref.read(motivationPhraseRepositoryProvider),
   );
 });
 

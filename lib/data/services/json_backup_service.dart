@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/utils/motivation_utils.dart';
 import '../models/activity.dart';
 import '../models/category.dart';
 import '../models/daily_activity_log.dart';
@@ -120,7 +119,6 @@ class JsonBackupService {
       final keyResultCheckInsRaw = root['keyResultCheckIns'];
       final categoriesRaw = root['categories'];
       final userSettingsRaw = root['userSettings'];
-      final motivationPhrasesRaw = root['motivationPhrases'];
 
       if (activitiesRaw is! List ||
           dailyLogsRaw is! List ||
@@ -237,13 +235,6 @@ class JsonBackupService {
       final userSettings = UserSettings.fromMap(
         Map<String, dynamic>.from(userSettingsRaw),
       );
-      final motivationPhrases =
-          motivationPhrasesRaw is List
-              ? motivationPhrasesRaw
-                  .map((entry) => entry.toString().trim())
-                  .where((entry) => entry.isNotEmpty)
-                  .toList()
-              : List<String>.from(MotivationUtils.defaultPhrases);
 
       await _appDataRepository.replaceAll(
         activities: activities,
@@ -257,7 +248,6 @@ class JsonBackupService {
         keyResultCheckIns: keyResultCheckIns,
         categories: categories,
         userSettings: userSettings,
-        motivationPhrases: motivationPhrases,
       );
 
       return const BackupResult(

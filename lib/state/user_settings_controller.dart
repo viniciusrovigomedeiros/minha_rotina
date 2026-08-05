@@ -34,30 +34,6 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
     );
   }
 
-  Future<void> updateMotivationPhraseMode(String mode) async {
-    final current = state.value;
-    if (current == null) return;
-    await _save(
-      current.copyWith(
-        motivationPhraseMode: mode,
-        clearFixedMotivationPhrase: mode == 'daily',
-        updatedAt: DateTime.now(),
-      ),
-    );
-  }
-
-  Future<void> updateFixedMotivationPhrase(String phrase) async {
-    final current = state.value;
-    if (current == null) return;
-    await _save(
-      current.copyWith(
-        motivationPhraseMode: 'fixed',
-        fixedMotivationPhrase: phrase,
-        updatedAt: DateTime.now(),
-      ),
-    );
-  }
-
   Future<void> updateNotificationsEnabled(bool value) async {
     final current = state.value;
     if (current == null) return;
@@ -88,34 +64,12 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
     );
   }
 
-  Future<void> updateBedtimeMotivationEnabled(bool value) async {
-    final current = state.value;
-    if (current == null) return;
-    await _save(
-      current.copyWith(
-        bedtimeMotivationEnabled: value,
-        updatedAt: DateTime.now(),
-      ),
-    );
-  }
-
   Future<void> updateDailyClosureReminderEnabled(bool value) async {
     final current = state.value;
     if (current == null) return;
     await _save(
       current.copyWith(
         dailyClosureReminderEnabled: value,
-        updatedAt: DateTime.now(),
-      ),
-    );
-  }
-
-  Future<void> updateBedtimeMotivationMinutes(int minutes) async {
-    final current = state.value;
-    if (current == null) return;
-    await _save(
-      current.copyWith(
-        bedtimeMotivationMinutes: minutes,
         updatedAt: DateTime.now(),
       ),
     );
@@ -155,7 +109,6 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
 
   Future<void> _syncNotifications(UserSettings settings) async {
     final activities = await ref.read(activityRepositoryProvider).getAll();
-    final phrases = await ref.read(motivationPhraseRepositoryProvider).getAll();
     final goals = await ref.read(weeklyGoalRepositoryProvider).getAll();
     final dailyLogs = await ref.read(dailyLogRepositoryProvider).getAll();
     await ref
@@ -163,7 +116,6 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
         .syncNotifications(
           activities: activities,
           settings: settings,
-          motivationPhrases: phrases,
           goals: goals,
           dailyLogs: dailyLogs,
         );

@@ -49,6 +49,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   static const _colorOptions = [
     0xFF5A7DFA,
     0xFF3FAE7A,
+    0xFFE6007A,
+    0xFFFF2DA6,
+    0xFFFF4FD8,
     0xFF9A6DF5,
     0xFF259D9B,
     0xFFE09A3C,

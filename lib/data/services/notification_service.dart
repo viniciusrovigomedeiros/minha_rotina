@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../../core/utils/motivation_utils.dart';
 import '../../core/utils/weekly_goal_progress_utils.dart';
 import '../models/activity.dart';
 import '../models/daily_activity_log.dart';
@@ -73,7 +72,6 @@ class NotificationService {
   Future<void> syncNotifications({
     required List<Activity> activities,
     required UserSettings settings,
-    required List<String> motivationPhrases,
     required List<WeeklyGoal> goals,
     required List<DailyActivityLog> dailyLogs,
   }) async {
@@ -173,35 +171,6 @@ class NotificationService {
       }
     }
 
-    if (settings.bedtimeMotivationEnabled) {
-      final bedtimePhrase = _buildBedtimePhrase(
-        phrases: motivationPhrases,
-        settings: settings,
-      );
-      final schedule = _nextDailyDate(settings.bedtimeMotivationMinutes);
-
-      await _plugin.zonedSchedule(
-        900000001,
-        'Preparação para amanhã',
-        bedtimePhrase,
-        schedule,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'minha_rotina_motivation',
-            'Motivação noturna',
-            channelDescription: 'Lembrete motivacional para o próximo dia',
-            importance: Importance.defaultImportance,
-            priority: Priority.defaultPriority,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    }
-
     if (settings.goalReminderNotificationsEnabled) {
       final activeGoals = goals.where((goal) => goal.isActive).toList();
       if (activeGoals.isNotEmpty) {
@@ -241,30 +210,6 @@ class NotificationService {
       }
     }
 
-    if (settings.dailyClosureReminderEnabled) {
-      final schedule = _nextDailyDate(settings.dailyClosureReminderMinutes);
-      await _plugin.zonedSchedule(
-        900000003,
-        'Fechamento diário',
-        'Antes de encerrar o dia, preencha seu diário.',
-        schedule,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'minha_rotina_daily_closure',
-            'Fechamento diário',
-            channelDescription:
-                'Lembrete para preencher o diário no final do dia',
-            importance: Importance.defaultImportance,
-            priority: Priority.defaultPriority,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    }
   }
 
   tz.TZDateTime _nextDateForWeekday({
@@ -338,28 +283,6 @@ class NotificationService {
 
     return completedCount < activity.effectiveWeeklyTargetCount;
   }
-
-  String _buildBedtimePhrase({
-    required List<String> phrases,
-    required UserSettings settings,
-  }) {
-    final source =
-        phrases.isNotEmpty ? phrases : MotivationUtils.defaultPhrases;
-    final fixedPhrase = settings.fixedMotivationPhrase;
-    final useFixed =
-        settings.motivationPhraseMode == 'fixed' &&
-        fixedPhrase != null &&
-        source.contains(fixedPhrase);
-    final phrase =
-        useFixed
-            ? fixedPhrase
-            : MotivationUtils.phraseForDay(
-              DateTime.now().add(const Duration(days: 1)),
-              phrases: source,
-            );
-    return 'Amanhã: $phrase';
-  }
-
   String _buildGoalsReminderBody({
     required List<WeeklyGoalProgress> pendingGoals,
     required List<WeeklyGoalProgress> allGoals,

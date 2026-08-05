@@ -82,7 +82,6 @@ class GoalsController extends AsyncNotifier<List<WeeklyGoal>> {
   Future<void> _syncNotifications() async {
     final settings = await ref.read(userSettingsRepositoryProvider).get();
     final activities = await ref.read(activityRepositoryProvider).getAll();
-    final phrases = await ref.read(motivationPhraseRepositoryProvider).getAll();
     final goals = await ref.read(weeklyGoalRepositoryProvider).getAll();
     final dailyLogs = await ref.read(dailyLogRepositoryProvider).getAll();
     await ref
@@ -90,7 +89,6 @@ class GoalsController extends AsyncNotifier<List<WeeklyGoal>> {
         .syncNotifications(
           activities: activities,
           settings: settings,
-          motivationPhrases: phrases,
           goals: goals,
           dailyLogs: dailyLogs,
         );

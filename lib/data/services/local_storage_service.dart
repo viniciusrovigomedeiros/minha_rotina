@@ -5,6 +5,8 @@ import '../models/category.dart';
 class LocalStorageService {
   const LocalStorageService._();
 
+  static const String legacyMotivationPhrasesKey = 'motivation_phrases';
+
   static const String activitiesBoxName = 'activities_box';
   static const String dailyLogsBoxName = 'daily_logs_box';
   static const String dailyPlansBoxName = 'daily_plans_box';
@@ -36,6 +38,7 @@ class LocalStorageService {
       Hive.openBox<Map>(keyResultCheckInsBoxName),
     ]);
 
+    await metadataBox.delete(legacyMotivationPhrasesKey);
     await ensureDefaultCategories();
   }
 

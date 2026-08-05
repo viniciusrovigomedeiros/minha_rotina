@@ -96,6 +96,7 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
       final planSnapshot = await dailyPlanRepository.snapshotForDay(
         date: dayDate,
         activities: activities,
+        logs: logs,
       );
 
       final dayLogs = logsByDay[dayKey] ?? const [];

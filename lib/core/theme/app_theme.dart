@@ -22,6 +22,16 @@ class AppTheme {
     AppThemeOption(key: 'amber', label: 'Âmbar', primary: Color(0xFFE59A2C)),
     AppThemeOption(key: 'teal', label: 'Turquesa', primary: Color(0xFF1BA7A1)),
     AppThemeOption(key: 'rose', label: 'Rosa', primary: Color(0xFFD95C84)),
+    AppThemeOption(
+      key: 'magenta',
+      label: 'Magenta',
+      primary: Color(0xFFE6007A),
+    ),
+    AppThemeOption(
+      key: 'fuchsia',
+      label: 'Fúcsia',
+      primary: Color(0xFFFF2DA6),
+    ),
     AppThemeOption(key: 'indigo', label: 'Índigo', primary: Color(0xFF4B63E6)),
     AppThemeOption(key: 'coral', label: 'Coral', primary: Color(0xFFDB6A55)),
   ];

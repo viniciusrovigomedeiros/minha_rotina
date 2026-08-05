@@ -348,7 +348,7 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
                       ) ...[
                         _InitiativeTile(
                           activity: nextActions[index],
-                          code: 'ACT-${index + 1}',
+                          code: 'ACAO-${index + 1}',
                         ),
                         if (index < nextActions.length - 1)
                           const Divider(height: 10),
@@ -662,16 +662,29 @@ class _InitiativeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _DetailWorkItemIcon(
-          icon: Icons.check_box_outlined,
-          tint: Theme.of(context).colorScheme.secondary,
+        Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.secondary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.check_box_outlined,
+            size: 18,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 code,
@@ -682,16 +695,20 @@ class _InitiativeTile extends StatelessWidget {
                   letterSpacing: 0.4,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 activity.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 activity.description ?? activity.recurrence.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

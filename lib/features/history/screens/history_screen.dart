@@ -3,11 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/date_utils.dart';
-import '../../../data/models/daily_closure_entry.dart';
 import '../../../data/models/activity_status.dart';
 import '../../shared/widgets/completion_quality_sheet.dart';
-import '../../shared/widgets/daily_closure_sheet.dart';
-import '../../../state/daily_closures_controller.dart';
 import '../../../state/history_controller.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -137,14 +134,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           const SizedBox(height: 8),
                           Text(
                             'Média de qualidade da semana: ${weeklySummary.averageQualityLabel}.',
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Dias com fechamento diário: ${weeklySummary.daysWithClosure}/7.',
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Ajuste mais recente para amanhã: ${weeklySummary.latestImprovement}.',
                           ),
                           const SizedBox(height: 6),
                           Text(
@@ -292,72 +281,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Fechamento diário',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed:
-                                    () => _openDailyClosureSheet(
-                                      context: context,
-                                      dayKey: selectedDayKey,
-                                      existing: summary?.dailyClosure,
-                                    ),
-                                child: Text(
-                                  summary?.dailyClosure == null
-                                      ? 'Registrar'
-                                      : 'Editar',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (summary?.dailyClosure == null)
-                            const Text(
-                              'Registre em 2 minutos: melhor entrega, onde perdeu padrão e o ajuste para amanhã.',
-                            )
-                          else ...[
-                            Text(
-                              'Reflexão registrada para este dia.',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _DailyClosureRow(
-                              label: 'O que ficou excelente?',
-                              value: summary!.dailyClosure!.bestWork,
-                            ),
-                            const SizedBox(height: 8),
-                            _DailyClosureRow(
-                              label: 'Perda de padrão',
-                              value: summary.dailyClosure!.lostStandard,
-                            ),
-                            const SizedBox(height: 8),
-                            _DailyClosureRow(
-                              label: 'O que melhorar amanhã?',
-                              value:
-                                  summary.dailyClosure!.improvementForTomorrow,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             );
@@ -408,36 +331,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
   }
 
-  Future<void> _openDailyClosureSheet({
-    required BuildContext context,
-    required String dayKey,
-    required DailyClosureEntry? existing,
-  }) async {
-    final result = await showDailyClosureSheet(
-      context: context,
-      existing: existing,
-    );
-
-    if (result == null) return;
-
-    await ref
-        .read(dailyClosuresControllerProvider.notifier)
-        .saveForDay(
-          dayKey: dayKey,
-          bestWork: result.bestWork,
-          lostStandard: result.lostStandard,
-          improvementForTomorrow: result.improvementForTomorrow,
-        );
-
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fechamento diário salvo.'),
-        duration: Duration(milliseconds: 1200),
-      ),
-    );
-  }
-
   _WeeklyLearningSummary _buildWeeklyLearningSummary(
     List<HistoryDaySummary> days,
   ) {
@@ -445,8 +338,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (week.isEmpty) {
       return const _WeeklyLearningSummary(
         averageQualityLabel: 'sem dados',
-        daysWithClosure: 0,
-        latestImprovement: 'sem registros',
       );
     }
 
@@ -463,22 +354,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ) /
                 completedInWeek;
 
-    final closures = week.where((day) => day.dailyClosure != null).toList();
-    final latestClosure =
-        closures.isEmpty
-            ? null
-            : closures.first.dailyClosure?.improvementForTomorrow;
-
     return _WeeklyLearningSummary(
       averageQualityLabel:
           completedInWeek == 0
               ? 'sem dados'
               : '${averageQuality.toStringAsFixed(1)}/10',
-      daysWithClosure: closures.length,
-      latestImprovement:
-          (latestClosure == null || latestClosure.trim().isEmpty)
-              ? 'sem registros'
-              : latestClosure,
     );
   }
 }
@@ -486,13 +366,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 class _WeeklyLearningSummary {
   const _WeeklyLearningSummary({
     required this.averageQualityLabel,
-    required this.daysWithClosure,
-    required this.latestImprovement,
   });
 
   final String averageQualityLabel;
-  final int daysWithClosure;
-  final String latestImprovement;
 }
 
 class _CompactHistoryCalendar extends StatelessWidget {
@@ -645,29 +521,5 @@ class _CompactHistoryCalendar extends StatelessWidget {
 
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-}
-
-class _DailyClosureRow extends StatelessWidget {
-  const _DailyClosureRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 2),
-        Text(value, style: Theme.of(context).textTheme.bodyMedium),
-      ],
-    );
   }
 }

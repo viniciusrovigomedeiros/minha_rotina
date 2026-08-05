@@ -44,7 +44,6 @@ class WeeklyDashboardState {
     required this.totalQualityScore,
     required this.averageQualityRank,
     required this.averageQualityScore,
-    required this.daysWithDailyClosure,
     required this.bestDayLabel,
     required this.currentStreak,
   });
@@ -56,7 +55,6 @@ class WeeklyDashboardState {
   final double totalQualityScore;
   final double averageQualityRank;
   final double averageQualityScore;
-  final int daysWithDailyClosure;
   final String bestDayLabel;
   final int currentStreak;
 
@@ -88,8 +86,6 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
     final activities = await ref.read(activityRepositoryProvider).getAll();
     final categories = await ref.read(categoryRepositoryProvider).getAll();
     final logs = await ref.read(dailyLogRepositoryProvider).getAll();
-    final dailyClosures =
-        await ref.read(dailyClosureRepositoryProvider).getAll();
     final dailyPlanRepository = ref.read(dailyPlanRepositoryProvider);
 
     final logsByDay = <String, List<DailyActivityLog>>{};
@@ -112,6 +108,7 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
       final planSnapshot = await dailyPlanRepository.snapshotForDay(
         date: date,
         activities: activities,
+        logs: logs,
       );
       final planned = planSnapshot.totalPlanned;
 
@@ -191,13 +188,6 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
       }
     }
 
-    final dailyClosureDaysInRange =
-        dailyClosures.where((entry) {
-          final date = DateUtilsX.fromDayKey(entry.dayKey);
-          final normalized = DateTime(date.year, date.month, date.day);
-          return !normalized.isBefore(start) && !normalized.isAfter(end);
-        }).length;
-
     return WeeklyDashboardState(
       dailyPoints: points,
       categoryPoints: categoryPoints,
@@ -212,7 +202,6 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
               ? 0
               : completedScores.fold<int>(0, (sum, value) => sum + value) /
                   completedScores.length,
-      daysWithDailyClosure: dailyClosureDaysInRange,
       bestDayLabel:
           bestDay == null
               ? 'Sem dados'

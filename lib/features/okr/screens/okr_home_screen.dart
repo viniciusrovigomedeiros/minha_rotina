@@ -12,6 +12,7 @@ import '../../../state/okr_workspace_controller.dart';
 import '../../../state/today_controller.dart';
 import '../../activities/screens/activity_form_screen.dart';
 import '../../shared/widgets/completion_quality_sheet.dart';
+import '../../shared/widgets/settings_action_button.dart';
 import '../widgets/okr_check_in_sheet.dart';
 import 'okr_cycles_screen.dart';
 import 'okr_objective_detail_screen.dart';
@@ -37,6 +38,7 @@ class OkrHomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.timeline_outlined),
             tooltip: 'Ciclos',
           ),
+          const SettingsActionButton(),
         ],
       ),
       body: SafeArea(
@@ -167,6 +169,7 @@ class OkrHomeScreen extends ConsumerWidget {
                     _ActivityCardList(
                       activities: workspace.independentActivities,
                       ref: ref,
+                      dense: true,
                     ),
                 ],
               ),
@@ -419,7 +422,7 @@ class _ObjectivePreviewCard extends StatelessWidget {
                     for (int index = 0; index < nextActions.length; index++)
                       _ObjectiveActionTile(
                         activity: nextActions[index],
-                        code: 'ACT-${index + 1}',
+                        code: 'ACAO-${index + 1}',
                         ref: ref,
                         showDivider: index < nextActions.length - 1,
                       ),
@@ -594,6 +597,7 @@ class _ObjectiveActionTile extends StatelessWidget {
           code: code,
           title: activity.name,
           subtitle: subtitle,
+          dense: true,
           onTap: () {
             _editActivity(context: context, ref: ref, activity: activity);
           },
@@ -617,11 +621,13 @@ class _ActivityCardList extends StatelessWidget {
     required this.activities,
     required this.ref,
     this.compact = false,
+    this.dense = false,
   });
 
   final List<Activity> activities;
   final WidgetRef ref;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -675,6 +681,7 @@ class _ActivityCardList extends StatelessWidget {
                     );
                   },
                 ),
+                dense: dense,
                 onTap: () {
                   _editActivity(
                     context: context,
@@ -697,6 +704,7 @@ class _CompactActivityTile extends StatelessWidget {
     required this.code,
     required this.title,
     required this.subtitle,
+    this.dense = false,
     required this.onTap,
     required this.onSelected,
   });
@@ -705,6 +713,7 @@ class _CompactActivityTile extends StatelessWidget {
   final String code;
   final String title;
   final String subtitle;
+  final bool dense;
   final VoidCallback onTap;
   final ValueChanged<String> onSelected;
 
@@ -715,7 +724,10 @@ class _CompactActivityTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: dense ? 12 : 16,
+          vertical: dense ? 8 : 12,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -734,15 +746,23 @@ class _CompactActivityTile extends StatelessWidget {
                 _ActivityActionsButton(onSelected: onSelected),
               ],
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: dense ? 3 : 6),
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: (dense
+                      ? Theme.of(context).textTheme.titleSmall
+                      : Theme.of(context).textTheme.titleMedium)
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 4),
-            Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            SizedBox(height: dense ? 2 : 4),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
       ),
@@ -805,6 +825,7 @@ class _HomeHierarchyTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.trailing,
+    this.dense = false,
     this.onTap,
   });
 
@@ -813,6 +834,7 @@ class _HomeHierarchyTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget? trailing;
+  final bool dense;
   final VoidCallback? onTap;
 
   @override
@@ -821,16 +843,19 @@ class _HomeHierarchyTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: dense ? 12 : 14,
+        vertical: dense ? 2 : 6,
+      ),
       leading: Container(
-        width: 36,
-        height: 36,
+        width: dense ? 34 : 36,
+        height: dense ? 34 : 36,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: 18, color: color),
+        child: Icon(icon, size: dense ? 17 : 18, color: color),
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -843,17 +868,22 @@ class _HomeHierarchyTile extends StatelessWidget {
               letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(title),
+          SizedBox(height: dense ? 1 : 2),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: dense ? Theme.of(context).textTheme.titleSmall : null,
+          ),
         ],
       ),
       subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text(subtitle),
+        padding: EdgeInsets.only(top: dense ? 2 : 4),
+        child: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
       trailing: trailing,
-      horizontalTitleGap: 12,
-      minVerticalPadding: 10,
+      horizontalTitleGap: dense ? 10 : 12,
+      minVerticalPadding: dense ? 6 : 10,
     );
   }
 }

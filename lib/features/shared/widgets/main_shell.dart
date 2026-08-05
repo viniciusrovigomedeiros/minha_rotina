@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../execution/screens/execution_screen.dart';
 import '../../okr/screens/okr_home_screen.dart';
 import '../../okr/screens/okr_objectives_screen.dart';
-import '../../settings/screens/settings_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -16,10 +15,9 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
   static const _screens = [
-    OkrHomeScreen(),
     ExecutionScreen(),
+    OkrHomeScreen(),
     OkrObjectivesScreen(),
-    SettingsScreen(),
   ];
 
   @override
@@ -30,24 +28,19 @@ class _MainShellState extends State<MainShell> {
         selectedIndex: _currentIndex,
         destinations: const [
           NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist_rounded),
+            label: 'Iniciativas',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.track_changes_outlined),
             selectedIcon: Icon(Icons.track_changes_rounded),
             label: 'OKRs',
           ),
           NavigationDestination(
-            icon: Icon(Icons.checklist_outlined),
-            selectedIcon: Icon(Icons.checklist_rounded),
-            label: 'Execução',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.flag_outlined),
             selectedIcon: Icon(Icons.flag_rounded),
             label: 'Objetivos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings_rounded),
-            label: 'Ajustes',
           ),
         ],
         onDestinationSelected: (index) {
