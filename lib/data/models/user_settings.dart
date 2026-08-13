@@ -8,6 +8,7 @@ class UserSettings {
     required this.goalReminderMinutes,
     required this.dailyClosureReminderMinutes,
     required this.themeKey,
+    required this.themeModeKey,
     required this.updatedAt,
   });
 
@@ -19,6 +20,7 @@ class UserSettings {
   final int goalReminderMinutes;
   final int dailyClosureReminderMinutes;
   final String themeKey;
+  final String themeModeKey;
   final DateTime updatedAt;
 
   UserSettings copyWith({
@@ -30,6 +32,7 @@ class UserSettings {
     int? goalReminderMinutes,
     int? dailyClosureReminderMinutes,
     String? themeKey,
+    String? themeModeKey,
     DateTime? updatedAt,
   }) {
     return UserSettings(
@@ -47,6 +50,7 @@ class UserSettings {
       dailyClosureReminderMinutes:
           dailyClosureReminderMinutes ?? this.dailyClosureReminderMinutes,
       themeKey: themeKey ?? this.themeKey,
+      themeModeKey: themeModeKey ?? this.themeModeKey,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -62,6 +66,7 @@ class UserSettings {
       'goalReminderMinutes': goalReminderMinutes,
       'dailyClosureReminderMinutes': dailyClosureReminderMinutes,
       'themeKey': themeKey,
+      'themeModeKey': themeModeKey,
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
@@ -81,6 +86,7 @@ class UserSettings {
       dailyClosureReminderMinutes:
           (map['dailyClosureReminderMinutes'] as int?) ?? ((21 * 60) + 45),
       themeKey: map['themeKey'] as String? ?? 'blue',
+      themeModeKey: map['themeModeKey'] as String? ?? 'system',
       updatedAt: DateTime.parse(
         map['updatedAt'] as String? ?? DateTime.now().toIso8601String(),
       ),
@@ -97,6 +103,7 @@ class UserSettings {
       goalReminderMinutes: (19 * 60) + 30,
       dailyClosureReminderMinutes: (21 * 60) + 45,
       themeKey: 'blue',
+      themeModeKey: 'system',
       updatedAt: DateTime.now(),
     );
   }

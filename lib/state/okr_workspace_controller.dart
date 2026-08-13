@@ -173,22 +173,10 @@ class OkrWorkspaceController extends AsyncNotifier<OkrWorkspaceState> {
           DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59, 999),
         );
       case ActivityRecurrence.weekly:
+      case ActivityRecurrence.weeklyFixed:
         return !activity.createdAt.isAfter(
           DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59, 999),
         );
-      case ActivityRecurrence.weeklyFixed:
-        return activity.weekdays.isNotEmpty &&
-            !activity.createdAt.isAfter(
-              DateTime(
-                weekEnd.year,
-                weekEnd.month,
-                weekEnd.day,
-                23,
-                59,
-                59,
-                999,
-              ),
-            );
       case ActivityRecurrence.oneOff:
         final scheduledDate = activity.scheduledDate;
         if (scheduledDate == null) return false;

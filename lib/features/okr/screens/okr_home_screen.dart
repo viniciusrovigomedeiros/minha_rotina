@@ -59,45 +59,58 @@ class OkrHomeScreen extends ConsumerWidget {
                 children: [
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Ciclo atual',
-                            style: Theme.of(context).textTheme.titleMedium,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Ciclo atual',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                              if (currentCycle != null)
+                                _HomeMetaPill(
+                                  label:
+                                      '${(currentCycle.progress * 100).round()}%',
+                                ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             currentCycle?.cycle.name ?? 'Nenhum ciclo ativo',
-                            style: Theme.of(context).textTheme.headlineSmall,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              height: 1.1,
+                            ),
                           ),
                           if (currentCycle != null) ...[
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             Text(
                               '${DateFormat('dd/MM/yyyy').format(currentCycle.cycle.startDate)} - ${DateFormat('dd/MM/yyyy').format(currentCycle.cycle.endDate)}',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             LinearProgressIndicator(
                               value: currentCycle.progress,
+                              minHeight: 5,
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             Wrap(
                               spacing: 8,
-                              runSpacing: 8,
+                              runSpacing: 6,
                               children: [
                                 _StatPill(
-                                  label: 'Progresso geral',
-                                  value:
-                                      '${(currentCycle.progress * 100).round()}%',
-                                ),
-                                _StatPill(
-                                  label: 'Objetivos ativos',
+                                  label: 'Objetivos',
                                   value: '${workspace.activeObjectives.length}',
                                 ),
                                 _StatPill(
-                                  label: 'Próximo check-in',
+                                  label: 'Check-in',
                                   value:
                                       workspace.nextCheckInDate == null
                                           ? 'Sem data'
@@ -133,44 +146,26 @@ class OkrHomeScreen extends ConsumerWidget {
                   else
                     for (
                       int index = 0;
-                      index < workspace.activeObjectives.take(3).length;
+                      index < workspace.activeObjectives.take(4).length;
                       index++
                     ) ...[
                       _ObjectivePreviewCard(
                         progress: workspace.activeObjectives[index],
                         ref: ref,
                       ),
-                      if (index < workspace.activeObjectives.take(3).length - 1)
+                      if (index < workspace.activeObjectives.take(4).length - 1)
                         const SizedBox(height: 10),
                     ],
-                  const SizedBox(height: 12),
-                  _SectionHeader(title: 'Iniciativas da semana'),
-                  const SizedBox(height: 8),
-                  if (workspace.weekInitiatives.isEmpty)
-                    const _EmptyCard(
-                      text:
-                          'Nenhuma iniciativa recorrente dos objetivos está programada para esta semana.',
-                    )
-                  else
+                  if (workspace.weekInitiatives.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _SectionHeader(title: 'Iniciativas da semana'),
+                    const SizedBox(height: 8),
                     _ActivityCardList(
                       activities: workspace.weekInitiatives,
                       compact: true,
                       ref: ref,
                     ),
-                  const SizedBox(height: 12),
-                  _SectionHeader(title: 'Tarefas independentes'),
-                  const SizedBox(height: 8),
-                  if (workspace.independentActivities.isEmpty)
-                    const _EmptyCard(
-                      text:
-                          'As tarefas sem OKR continuam disponíveis aqui como apoio secundário.',
-                    )
-                  else
-                    _ActivityCardList(
-                      activities: workspace.independentActivities,
-                      ref: ref,
-                      dense: true,
-                    ),
+                  ],
                 ],
               ),
             );
@@ -216,49 +211,53 @@ class _ObjectivePreviewCard extends StatelessWidget {
       progress.initiatives,
     );
     final nextActions = _nextActionsForObjective(progress.initiatives);
+    final summaryItems = <String>[
+      '${progress.keyResults.length} KRs',
+      '${recurringInitiatives.length} iniciativas',
+      if (nextActions.isNotEmpty) '${nextActions.length} ações',
+      if (pendingCount > 0) '$pendingCount check-ins pendentes',
+    ];
+    final canCheckIn = progress.keyResults.isNotEmpty;
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            Row(
               children: [
-                const _TypeBadge(label: 'OBJ'),
-                _HomeMetaPill(label: progress.cycle.name),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      const _TypeBadge(label: 'OBJ'),
+                      _HomeMetaPill(label: progress.cycle.name),
+                    ],
+                  ),
+                ),
+                _ProgressPill(percent: percent),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const _PreviewLeadingIcon(icon: Icons.flag_rounded),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'OBJ',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        progress.objective.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    progress.objective.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -272,50 +271,25 @@ class _ObjectivePreviewCard extends StatelessWidget {
                   },
                   icon: const Icon(Icons.chevron_right_rounded),
                   tooltip: 'Ver objetivo',
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
+            LinearProgressIndicator(value: progress.progress, minHeight: 6),
+            const SizedBox(height: 8),
+            Text(
+              summaryItems.join(' • '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: progress.progress,
-                    minHeight: 8,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '$percent%',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _HomeMetricChip(label: '${progress.keyResults.length} KRs'),
-                _HomeMetricChip(
-                  label: '${recurringInitiatives.length} iniciativas',
-                ),
-                if (nextActions.isNotEmpty)
-                  _HomeMetricChip(
-                    label: '${nextActions.length} próximas ações',
-                  ),
-                if (pendingCount > 0)
-                  _HomeMetricChip(
-                    label: '$pendingCount pendente(s) de check-in',
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (progress.keyResults.isNotEmpty)
+                if (canCheckIn)
                   OutlinedButton.icon(
                     onPressed: () {
                       _openObjectiveCheckInSheet(
@@ -324,9 +298,16 @@ class _ObjectivePreviewCard extends StatelessWidget {
                         progress: progress,
                       );
                     },
-                    icon: const Icon(Icons.edit_calendar_rounded, size: 18),
+                    icon: const Icon(Icons.edit_calendar_rounded, size: 16),
                     label: Text(
-                      pendingCount > 0 ? 'Fazer check-in' : 'Atualizar KRs',
+                      pendingCount > 0 ? 'Check-in' : 'Atualizar',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                   ),
                 const Spacer(),
@@ -341,95 +322,72 @@ class _ObjectivePreviewCard extends StatelessWidget {
                       ),
                     );
                   },
-                  child: const Text('Ver detalhes'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: const Text('Detalhes'),
                 ),
               ],
             ),
-            if (progress.keyResults.isNotEmpty) ...[
-              const SizedBox(height: 8),
+            if (progress.keyResults.isNotEmpty || nextActions.isNotEmpty) ...[
+              const SizedBox(height: 6),
               const Divider(height: 1),
-              Theme(
-                data: Theme.of(
-                  context,
-                ).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  key: PageStorageKey(
-                    'objective-home-${progress.objective.id}',
-                  ),
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: EdgeInsets.zero,
-                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                  title: Text(
-                    'Resultados-chave',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  subtitle: Text(
+            ],
+            if (progress.keyResults.isNotEmpty)
+              _CompactExpansionSection(
+                storageKey: 'objective-home-${progress.objective.id}',
+                title: 'Resultados-chave',
+                subtitle:
                     pendingCount > 0
-                        ? '$pendingCount pendente(s) para atualizar esta semana'
-                        : 'Tudo em dia neste objetivo',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  children: [
-                    for (
-                      int index = 0;
-                      index < progress.keyResults.length;
-                      index++
-                    )
-                      _ObjectiveKeyResultTile(
-                        progress: progress.keyResults[index],
-                        code: 'KR-${index + 1}',
-                        onTap: () {
-                          _openObjectiveCheckInSheet(
-                            context: context,
-                            ref: ref,
-                            progress: progress,
-                            focusKeyResultId:
-                                progress.keyResults[index].keyResult.id,
-                          );
-                        },
-                        showDivider: index < progress.keyResults.length - 1,
-                      ),
-                  ],
-                ),
-              ),
-            ],
-            if (nextActions.isNotEmpty) ...[
-              const Divider(height: 1),
-              Theme(
-                data: Theme.of(
-                  context,
-                ).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  key: PageStorageKey(
-                    'objective-actions-home-${progress.objective.id}',
-                  ),
-                  tilePadding: EdgeInsets.zero,
-                  childrenPadding: EdgeInsets.zero,
-                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                  title: Text(
-                    'Próximas ações',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                        ? '$pendingCount pendente(s) esta semana'
+                        : 'Tudo em dia',
+                children: [
+                  for (int index = 0; index < progress.keyResults.length; index++)
+                    _MiniObjectiveRow(
+                      icon: Icons.track_changes_rounded,
+                      title: progress.keyResults[index].keyResult.title,
+                      subtitle:
+                          '${OkrProgressUtils.formatValue(progress.keyResults[index].keyResult, progress.keyResults[index].keyResult.currentValue)} de ${OkrProgressUtils.formatValue(progress.keyResults[index].keyResult, progress.keyResults[index].keyResult.targetValue)}',
+                      trailingText:
+                          progress.keyResults[index].needsUpdate
+                              ? 'Pendente'
+                              : null,
+                      onTap: () {
+                        _openObjectiveCheckInSheet(
+                          context: context,
+                          ref: ref,
+                          progress: progress,
+                          focusKeyResultId:
+                              progress.keyResults[index].keyResult.id,
+                        );
+                      },
                     ),
-                  ),
-                  subtitle: Text(
-                    '${nextActions.length} passo(s) pontual(is) ligado(s) a este objetivo',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  children: [
-                    for (int index = 0; index < nextActions.length; index++)
-                      _ObjectiveActionTile(
-                        activity: nextActions[index],
-                        code: 'ACAO-${index + 1}',
-                        ref: ref,
-                        showDivider: index < nextActions.length - 1,
-                      ),
-                  ],
-                ),
+                ],
               ),
-            ],
+            if (nextActions.isNotEmpty)
+              _CompactExpansionSection(
+                storageKey: 'objective-actions-home-${progress.objective.id}',
+                title: 'Próximas ações',
+                subtitle: '${nextActions.length} ação(ões) ligada(s) ao objetivo',
+                children: [
+                  for (int index = 0; index < nextActions.length; index++)
+                    _MiniObjectiveRow(
+                      icon: Icons.check_box_outlined,
+                      title: nextActions[index].name,
+                      subtitle:
+                          nextActions[index].scheduledDate == null
+                              ? nextActions[index].recurrence.label
+                              : '${nextActions[index].recurrence.label} • ${DateFormat('dd/MM').format(nextActions[index].scheduledDate!)}',
+                      onTap: () {
+                        _editActivity(
+                          context: context,
+                          ref: ref,
+                          activity: nextActions[index],
+                        );
+                      },
+                    ),
+                ],
+              ),
           ],
         ),
       ),
@@ -506,128 +464,16 @@ class _HomeMetaPill extends StatelessWidget {
   }
 }
 
-class _HomeMetricChip extends StatelessWidget {
-  const _HomeMetricChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _ObjectiveKeyResultTile extends StatelessWidget {
-  const _ObjectiveKeyResultTile({
-    required this.progress,
-    required this.code,
-    required this.onTap,
-    required this.showDivider,
-  });
-
-  final KeyResultProgress progress;
-  final String code;
-  final VoidCallback onTap;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    final lastCheckInAt = progress.keyResult.lastCheckInAt;
-    final updateLabel =
-        lastCheckInAt == null
-            ? 'Nunca atualizado'
-            : 'Último check-in em ${DateFormat('dd/MM').format(lastCheckInAt)}';
-
-    return Column(
-      children: [
-        _HomeHierarchyTile(
-          icon: Icons.track_changes_rounded,
-          code: code,
-          title: progress.keyResult.title,
-          subtitle:
-              '${OkrProgressUtils.formatValue(progress.keyResult, progress.keyResult.currentValue)} de ${OkrProgressUtils.formatValue(progress.keyResult, progress.keyResult.targetValue)} • $updateLabel',
-          trailing:
-              progress.needsUpdate
-                  ? const _PendingInlineBadge()
-                  : const Icon(Icons.chevron_right_rounded),
-          onTap: onTap,
-        ),
-        if (showDivider) const Divider(height: 1),
-      ],
-    );
-  }
-}
-
-class _ObjectiveActionTile extends StatelessWidget {
-  const _ObjectiveActionTile({
-    required this.activity,
-    required this.code,
-    required this.ref,
-    required this.showDivider,
-  });
-
-  final Activity activity;
-  final String code;
-  final WidgetRef ref;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle =
-        activity.scheduledDate == null
-            ? activity.recurrence.label
-            : '${activity.recurrence.label} • ${DateFormat('dd/MM').format(activity.scheduledDate!)}';
-
-    return Column(
-      children: [
-        _CompactActivityTile(
-          activity: activity,
-          code: code,
-          title: activity.name,
-          subtitle: subtitle,
-          dense: true,
-          onTap: () {
-            _editActivity(context: context, ref: ref, activity: activity);
-          },
-          onSelected: (action) {
-            _handleActivityAction(
-              context: context,
-              ref: ref,
-              activity: activity,
-              action: action,
-            );
-          },
-        ),
-        if (showDivider) const Divider(height: 1),
-      ],
-    );
-  }
-}
-
 class _ActivityCardList extends StatelessWidget {
   const _ActivityCardList({
     required this.activities,
     required this.ref,
     this.compact = false,
-    this.dense = false,
   });
 
   final List<Activity> activities;
   final WidgetRef ref;
   final bool compact;
-  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -681,7 +527,6 @@ class _ActivityCardList extends StatelessWidget {
                     );
                   },
                 ),
-                dense: dense,
                 onTap: () {
                   _editActivity(
                     context: context,
@@ -698,13 +543,167 @@ class _ActivityCardList extends StatelessWidget {
   }
 }
 
+class _ProgressPill extends StatelessWidget {
+  const _ProgressPill({required this.percent});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$percent%',
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _CompactExpansionSection extends StatelessWidget {
+  const _CompactExpansionSection({
+    required this.storageKey,
+    required this.title,
+    required this.subtitle,
+    required this.children,
+  });
+
+  final String storageKey;
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        key: PageStorageKey(storageKey),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        title: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        children: [
+          const SizedBox(height: 2),
+          for (int index = 0; index < children.length; index++) ...[
+            children[index],
+            if (index < children.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniObjectiveRow extends StatelessWidget {
+  const _MiniObjectiveRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.trailingText,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String? trailingText;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      minVerticalPadding: 4,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      leading: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 15, color: color),
+      ),
+      horizontalTitleGap: 10,
+      onTap: onTap,
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      trailing:
+          trailingText == null
+              ? const Icon(Icons.chevron_right_rounded, size: 18)
+              : _InlineStatusBadge(label: trailingText!),
+    );
+  }
+}
+
+class _InlineStatusBadge extends StatelessWidget {
+  const _InlineStatusBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.error,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
 class _CompactActivityTile extends StatelessWidget {
   const _CompactActivityTile({
     required this.activity,
     required this.code,
     required this.title,
     required this.subtitle,
-    this.dense = false,
     required this.onTap,
     required this.onSelected,
   });
@@ -713,7 +712,6 @@ class _CompactActivityTile extends StatelessWidget {
   final String code;
   final String title;
   final String subtitle;
-  final bool dense;
   final VoidCallback onTap;
   final ValueChanged<String> onSelected;
 
@@ -724,10 +722,7 @@ class _CompactActivityTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: dense ? 12 : 16,
-          vertical: dense ? 8 : 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -746,17 +741,16 @@ class _CompactActivityTile extends StatelessWidget {
                 _ActivityActionsButton(onSelected: onSelected),
               ],
             ),
-            SizedBox(height: dense ? 3 : 6),
+            const SizedBox(height: 6),
             Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: (dense
-                      ? Theme.of(context).textTheme.titleSmall
-                      : Theme.of(context).textTheme.titleMedium)
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
-            SizedBox(height: dense ? 2 : 4),
+            const SizedBox(height: 4),
             Text(
               subtitle,
               maxLines: 1,
@@ -803,7 +797,7 @@ class _StatPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(999),
@@ -825,7 +819,6 @@ class _HomeHierarchyTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.trailing,
-    this.dense = false,
     this.onTap,
   });
 
@@ -834,7 +827,6 @@ class _HomeHierarchyTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget? trailing;
-  final bool dense;
   final VoidCallback? onTap;
 
   @override
@@ -843,19 +835,16 @@ class _HomeHierarchyTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: dense ? 12 : 14,
-        vertical: dense ? 2 : 6,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       leading: Container(
-        width: dense ? 34 : 36,
-        height: dense ? 34 : 36,
+        width: 36,
+        height: 36,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: dense ? 17 : 18, color: color),
+        child: Icon(icon, size: 18, color: color),
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,44 +857,21 @@ class _HomeHierarchyTile extends StatelessWidget {
               letterSpacing: 0.4,
             ),
           ),
-          SizedBox(height: dense ? 1 : 2),
+          const SizedBox(height: 2),
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: dense ? Theme.of(context).textTheme.titleSmall : null,
           ),
         ],
       ),
       subtitle: Padding(
-        padding: EdgeInsets.only(top: dense ? 2 : 4),
+        padding: const EdgeInsets.only(top: 4),
         child: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
       trailing: trailing,
-      horizontalTitleGap: dense ? 10 : 12,
-      minVerticalPadding: dense ? 6 : 10,
-    );
-  }
-}
-
-class _PendingInlineBadge extends StatelessWidget {
-  const _PendingInlineBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        'Pendente',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.error,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+      horizontalTitleGap: 12,
+      minVerticalPadding: 10,
     );
   }
 }

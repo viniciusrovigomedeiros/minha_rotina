@@ -82,12 +82,12 @@ class OkrObjectivesScreen extends ConsumerWidget {
                     'Todos os objetivos',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     'Acompanhe progresso, resultados-chave e iniciativas vinculadas.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   for (int index = 0; index < objectives.length; index++) ...[
                     _ObjectiveCard(
                       progress: objectives[index],
@@ -159,13 +159,13 @@ class _ObjectiveCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Wrap(
                 spacing: 8,
-                runSpacing: 8,
+                runSpacing: 6,
                 children: [
                   const _IssueTypePill(label: 'OBJETIVO'),
                   _MetaPill(
@@ -178,7 +178,7 @@ class _ObjectiveCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -213,17 +213,22 @@ class _ObjectiveCard extends StatelessWidget {
                                     progress.objective.title,
                                     style: Theme.of(context)
                                         .textTheme
-                                        .titleLarge
-                                        ?.copyWith(fontWeight: FontWeight.w800),
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.15,
+                                        ),
                                   ),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           'Container principal do ciclo com resultados-chave e iniciativas vinculadas.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -240,12 +245,12 @@ class _ObjectiveCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _ProgressRail(
                 progress: progress.progress,
                 label: '$percent% concluído',
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,19 +273,19 @@ class _ObjectiveCard extends StatelessWidget {
                       child: _MetricBlock(
                         label: 'Período',
                         value:
-                            '${dateFormat.format(progress.objective.startDate)} - ${dateFormat.format(progress.objective.endDate)}',
+                            '${dateFormat.format(progress.objective.startDate)}\n${dateFormat.format(progress.objective.endDate)}',
                       ),
                     ),
                   ],
                 ),
               ),
               if (progress.keyResults.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 const Text(
                   'Resultados-chave',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 for (
                   int index = 0;
                   index < progress.keyResults.take(2).length;
@@ -294,11 +299,11 @@ class _ObjectiveCard extends StatelessWidget {
                     icon: Icons.track_changes_rounded,
                   ),
                   if (index < progress.keyResults.take(2).length - 1)
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                 ],
               ],
               if (progress.objective.needsReview) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 const _ReviewBanner(),
               ],
             ],
@@ -317,7 +322,7 @@ class _IssueTypePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary,
         borderRadius: BorderRadius.circular(8),
@@ -343,7 +348,7 @@ class _MetaPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
@@ -367,7 +372,7 @@ class _ProgressRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
@@ -393,8 +398,8 @@ class _ProgressRail extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(value: progress, minHeight: 8),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(value: progress, minHeight: 6),
         ],
       ),
     );
@@ -411,7 +416,7 @@ class _MetricBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
@@ -423,7 +428,7 @@ class _MetricBlock extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             value,
             style: Theme.of(
@@ -457,9 +462,9 @@ class _ChildItemPreview extends StatelessWidget {
         _WorkItemIcon(
           icon: icon,
           tint: Theme.of(context).colorScheme.primary,
-          size: 28,
+          size: 26,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,9 +477,9 @@ class _ChildItemPreview extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),

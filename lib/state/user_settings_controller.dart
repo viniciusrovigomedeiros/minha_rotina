@@ -34,6 +34,14 @@ class UserSettingsController extends AsyncNotifier<UserSettings> {
     );
   }
 
+  Future<void> updateThemeModeKey(String themeModeKey) async {
+    final current = state.value;
+    if (current == null) return;
+    await _save(
+      current.copyWith(themeModeKey: themeModeKey, updatedAt: DateTime.now()),
+    );
+  }
+
   Future<void> updateNotificationsEnabled(bool value) async {
     final current = state.value;
     if (current == null) return;

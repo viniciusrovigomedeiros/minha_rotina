@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/weekly_goal_progress_utils.dart';
 import '../../../data/models/weekly_goal.dart';
 
@@ -21,13 +22,14 @@ class WeeklyGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.appPalette;
     final titleStyle =
         compact
             ? Theme.of(context).textTheme.titleSmall
             : Theme.of(context).textTheme.titleMedium;
     final statusColor =
         progress.isCompleted
-            ? const Color(0xFF2E9E6E)
+            ? palette.successForeground
             : Theme.of(context).colorScheme.primary;
 
     final goal = progress.goal;
@@ -48,7 +50,7 @@ class WeeklyGoalCard extends StatelessWidget {
         border: Border.all(
           color:
               progress.isCompleted
-                  ? const Color(0xFFBFE3CF)
+                  ? palette.successBorder
                   : Theme.of(
                     context,
                   ).colorScheme.outline.withValues(alpha: 0.28),
@@ -141,13 +143,14 @@ class _GoalStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.appPalette;
     final completed = progress.isCompleted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color:
             completed
-                ? const Color(0xFFE8F8EF)
+                ? palette.successFill
                 : Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
@@ -156,7 +159,7 @@ class _GoalStatusPill extends StatelessWidget {
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color:
               completed
-                  ? const Color(0xFF2E9E6E)
+                  ? palette.successForeground
                   : Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.w800,
         ),

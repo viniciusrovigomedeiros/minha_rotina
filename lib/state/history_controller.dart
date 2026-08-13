@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/activity_planning_utils.dart';
 import '../core/utils/date_utils.dart';
 import '../data/models/activity.dart';
 import '../data/models/activity_completion_quality.dart';
@@ -26,24 +27,33 @@ class HistoryDaySummary {
   const HistoryDaySummary({
     required this.dayKey,
     required this.completed,
+    required this.completedPlanned,
     required this.totalPlanned,
     required this.qualityScore,
     required this.averageQualityRank,
     required this.averageQualityScore,
+    required this.weeklyFlexibleCompleted,
+    required this.weeklyFlexibleTarget,
     required this.items,
     required this.dailyClosure,
   });
 
   final String dayKey;
   final int completed;
+  final int completedPlanned;
   final int totalPlanned;
   final double qualityScore;
   final double averageQualityRank;
   final double averageQualityScore;
+  final int weeklyFlexibleCompleted;
+  final int weeklyFlexibleTarget;
   final List<HistoryActivitySummary> items;
   final DailyClosureEntry? dailyClosure;
 
-  double get completionRate => totalPlanned == 0 ? 0 : completed / totalPlanned;
+  bool get hasWeeklyFlexibleProgress => weeklyFlexibleTarget > 0;
+
+  double get completionRate =>
+      totalPlanned == 0 ? 0 : completedPlanned / totalPlanned;
 }
 
 final historyControllerProvider =
@@ -98,25 +108,25 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
         activities: activities,
         logs: logs,
       );
+      final plannedActivityIds = planSnapshot.activityIds.toSet();
 
       final dayLogs = logsByDay[dayKey] ?? const [];
-      final completed =
+      final completedLogs =
           dayLogs
               .where((entry) => entry.status == ActivityStatus.completed)
-              .length;
+              .toList();
+      final completedPlannedLogs =
+          completedLogs
+              .where((entry) => plannedActivityIds.contains(entry.activityId))
+              .toList();
       final completedQualities =
-          dayLogs
-              .where((entry) => entry.status == ActivityStatus.completed)
+          completedLogs
               .map(
                 (entry) =>
                     entry.completionQuality ?? ActivityCompletionQuality.medium,
               )
               .toList();
-      final completedScores =
-          dayLogs
-              .where((entry) => entry.status == ActivityStatus.completed)
-              .map(_resolveQualityScore)
-              .toList();
+      final completedScores = completedLogs.map(_resolveQualityScore).toList();
       final qualityScore = completedQualities.fold<double>(
         0,
         (sum, quality) => sum + quality.weight,
@@ -129,6 +139,11 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
               ? 0.0
               : completedScores.fold<int>(0, (sum, value) => sum + value) /
                   completedScores.length;
+      final weeklyFlexibleProgress = _weeklyFlexibleProgressForDay(
+        date: dayDate,
+        activities: activities,
+        logs: logs,
+      );
 
       final summaries =
           dayLogs.map((entry) {
@@ -152,11 +167,14 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
       result.add(
         HistoryDaySummary(
           dayKey: dayKey,
-          completed: completed,
+          completed: completedLogs.length,
+          completedPlanned: completedPlannedLogs.length,
           totalPlanned: planSnapshot.totalPlanned,
           qualityScore: qualityScore,
           averageQualityRank: averageQualityRank,
           averageQualityScore: averageQualityScore,
+          weeklyFlexibleCompleted: weeklyFlexibleProgress.completed,
+          weeklyFlexibleTarget: weeklyFlexibleProgress.target,
           items: summaries,
           dailyClosure: closuresByDay[dayKey],
         ),
@@ -210,4 +228,50 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
         return 9;
     }
   }
+
+  _HistoryWeeklyFlexibleProgress _weeklyFlexibleProgressForDay({
+    required DateTime date,
+    required List<Activity> activities,
+    required List<DailyActivityLog> logs,
+  }) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final weekStart = ActivityPlanningUtils.startOfWeek(normalizedDate);
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    int completed = 0;
+    int target = 0;
+
+    for (final activity in activities) {
+      if (activity.recurrence != ActivityRecurrence.weekly) continue;
+      if (!ActivityPlanningUtils.isCreatedBeforeDayEnd(
+        activity,
+        normalizedDate,
+      )) {
+        continue;
+      }
+
+      target += activity.effectiveWeeklyTargetCount;
+      completed += ActivityPlanningUtils.completedCountForWeekUntilDate(
+        activityId: activity.id,
+        logs: logs,
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        endDate: normalizedDate,
+      );
+    }
+
+    return _HistoryWeeklyFlexibleProgress(
+      completed: completed.clamp(0, target),
+      target: target,
+    );
+  }
+}
+
+class _HistoryWeeklyFlexibleProgress {
+  const _HistoryWeeklyFlexibleProgress({
+    required this.completed,
+    required this.target,
+  });
+
+  final int completed;
+  final int target;
 }

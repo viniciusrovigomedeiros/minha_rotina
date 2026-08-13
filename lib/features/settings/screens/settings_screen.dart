@@ -37,14 +37,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               padding: const EdgeInsets.all(20),
               children: [
                 Text(
-                  'Tema',
+                  'Aparencia',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Escolha a cor principal do aplicativo.',
+                  'Escolha se o app segue o sistema, modo claro ou escuro.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in AppTheme.themeModeOptions)
+                      ChoiceChip(
+                        selected: settings.themeModeKey == option.key,
+                        onSelected:
+                            _isBusy
+                                ? null
+                                : (_) async {
+                                  await ref
+                                      .read(
+                                        userSettingsControllerProvider.notifier,
+                                      )
+                                      .updateThemeModeKey(option.key);
+                                },
+                        label: Text(option.label),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Cor principal',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Escolha a cor base usada nos destaques e acoes do aplicativo.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),

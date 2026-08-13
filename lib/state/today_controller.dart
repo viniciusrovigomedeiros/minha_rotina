@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/activity_planning_utils.dart';
 import '../core/utils/date_utils.dart';
 import '../data/models/activity_completion_payload.dart';
 import '../data/models/activity_completion_quality.dart';
@@ -21,6 +22,9 @@ class TodayActivityItem {
     this.weeklyCompletedCount,
     this.weeklyTargetCount,
     this.isSuggestedToday = false,
+    this.countsTowardDailyProgress = true,
+    this.weeklyDeadlineLabel,
+    this.isDueTodayInWeeklyGoals = false,
   });
 
   final Activity activity;
@@ -30,6 +34,9 @@ class TodayActivityItem {
   final int? weeklyCompletedCount;
   final int? weeklyTargetCount;
   final bool isSuggestedToday;
+  final bool countsTowardDailyProgress;
+  final String? weeklyDeadlineLabel;
+  final bool isDueTodayInWeeklyGoals;
 
   TodayActivityItem copyWith({
     ActivityStatus? status,
@@ -38,6 +45,9 @@ class TodayActivityItem {
     int? weeklyCompletedCount,
     int? weeklyTargetCount,
     bool? isSuggestedToday,
+    bool? countsTowardDailyProgress,
+    String? weeklyDeadlineLabel,
+    bool? isDueTodayInWeeklyGoals,
     bool clearCompletionQuality = false,
     bool clearQualityScore = false,
   }) {
@@ -53,6 +63,11 @@ class TodayActivityItem {
       weeklyCompletedCount: weeklyCompletedCount ?? this.weeklyCompletedCount,
       weeklyTargetCount: weeklyTargetCount ?? this.weeklyTargetCount,
       isSuggestedToday: isSuggestedToday ?? this.isSuggestedToday,
+      countsTowardDailyProgress:
+          countsTowardDailyProgress ?? this.countsTowardDailyProgress,
+      weeklyDeadlineLabel: weeklyDeadlineLabel ?? this.weeklyDeadlineLabel,
+      isDueTodayInWeeklyGoals:
+          isDueTodayInWeeklyGoals ?? this.isDueTodayInWeeklyGoals,
     );
   }
 }
@@ -68,13 +83,22 @@ class TodayState {
   final List<TodayActivityItem> items;
   final List<TodayActivityItem> weeklyGoalItems;
 
-  int get total => items.length;
+  Iterable<TodayActivityItem> get _countedItems => [
+    ...items,
+    ...weeklyGoalItems.where((item) => item.countsTowardDailyProgress),
+  ];
+
+  int get total => _countedItems.length;
 
   int get completedCount =>
-      items.where((item) => item.status == ActivityStatus.completed).length;
+      _countedItems
+          .where((item) => item.status == ActivityStatus.completed)
+          .length;
 
   int get skippedCount =>
-      items.where((item) => item.status == ActivityStatus.skipped).length;
+      _countedItems
+          .where((item) => item.status == ActivityStatus.skipped)
+          .length;
 
   double get completionRate => total == 0 ? 0 : completedCount / total;
 }
@@ -126,13 +150,14 @@ class TodayController extends AsyncNotifier<TodayState> {
     final logs = allLogs.where((log) => log.dayKey == dayKey).toList();
 
     final logsByActivityId = {for (final log in logs) log.activityId: log};
-    final weekStart = _startOfWeek(normalizedDate);
+    final weekStart = ActivityPlanningUtils.startOfWeek(normalizedDate);
     final weekEnd = weekStart.add(const Duration(days: 6));
 
     final todayActivities =
         activities
             .where(
-              (activity) => _isScheduledActivityForDate(activity, normalizedDate),
+              (activity) =>
+                  _isScheduledActivityForDate(activity, normalizedDate),
             )
             .toList()
           ..sort((a, b) {
@@ -158,12 +183,11 @@ class TodayController extends AsyncNotifier<TodayState> {
             .where(
               (activity) =>
                   activity.isActive &&
-                  activity.recurrence == ActivityRecurrence.weekly &&
-                  _isCreatedBeforeDayEnd(activity, normalizedDate) &&
-                  _shouldShowFlexibleWeeklyActivity(
+                  _isCreatedBeforeDayEnd(activity, weekEnd) &&
+                  ActivityPlanningUtils.shouldShowInWeeklyGoalsSection(
                     activity: activity,
                     date: normalizedDate,
-                    allLogs: allLogs,
+                    logs: allLogs,
                   ),
             )
             .map((activity) {
@@ -176,18 +200,68 @@ class TodayController extends AsyncNotifier<TodayState> {
                 endDate: normalizedDate,
               );
 
+              final countsTowardDailyProgress =
+                  ActivityPlanningUtils.countsTowardDailyProgressInWeeklyGoals(
+                    activity: activity,
+                    date: normalizedDate,
+                    logs: allLogs,
+                  );
+              final weeklyDeadlineLabel =
+                  ActivityPlanningUtils.deadlineLabelForWeeklyGoalActivity(
+                    activity: activity,
+                    date: normalizedDate,
+                    logs: allLogs,
+                  );
+              final isDueTodayInWeeklyGoals =
+                  ActivityPlanningUtils.isDueTodayInWeeklyGoals(
+                    activity: activity,
+                    date: normalizedDate,
+                    logs: allLogs,
+                  );
+              final weeklyTargetCount =
+                  ActivityPlanningUtils.weeklyTargetCountForActivity(
+                    activity: activity,
+                    date: normalizedDate,
+                  );
+
               return TodayActivityItem(
                 activity: activity,
                 status: log?.status ?? ActivityStatus.pending,
                 completionQuality: log?.completionQuality,
                 qualityScore: log?.qualityScore,
                 weeklyCompletedCount: completedCount,
-                weeklyTargetCount: activity.effectiveWeeklyTargetCount,
-                isSuggestedToday: activity.weekdays.contains(normalizedDate.weekday),
+                weeklyTargetCount: weeklyTargetCount,
+                isSuggestedToday: activity.weekdays.contains(
+                  normalizedDate.weekday,
+                ),
+                countsTowardDailyProgress: countsTowardDailyProgress,
+                weeklyDeadlineLabel: weeklyDeadlineLabel,
+                isDueTodayInWeeklyGoals: isDueTodayInWeeklyGoals,
               );
             })
             .toList()
           ..sort((a, b) {
+            if (a.countsTowardDailyProgress != b.countsTowardDailyProgress) {
+              return a.countsTowardDailyProgress ? -1 : 1;
+            }
+            final aRelevantDate =
+                ActivityPlanningUtils.relevantDateForWeeklyGoalsSection(
+                  activity: a.activity,
+                  date: normalizedDate,
+                );
+            final bRelevantDate =
+                ActivityPlanningUtils.relevantDateForWeeklyGoalsSection(
+                  activity: b.activity,
+                  date: normalizedDate,
+                );
+            if (aRelevantDate != null && bRelevantDate != null) {
+              final compare = aRelevantDate.compareTo(bRelevantDate);
+              if (compare != 0) return compare;
+            } else if (aRelevantDate != null) {
+              return -1;
+            } else if (bRelevantDate != null) {
+              return 1;
+            }
             if (a.isSuggestedToday != b.isSuggestedToday) {
               return a.isSuggestedToday ? -1 : 1;
             }
@@ -251,7 +325,7 @@ class TodayController extends AsyncNotifier<TodayState> {
                           (item.status == ActivityStatus.completed ? 0 : 1))
                       .clamp(0, item.weeklyTargetCount ?? 7)
                   : updatedLog.status == ActivityStatus.pending &&
-                          item.status == ActivityStatus.completed
+                      item.status == ActivityStatus.completed
                   ? ((item.weeklyCompletedCount ?? 0) - 1).clamp(0, 7)
                   : item.weeklyCompletedCount;
           return item.copyWith(
@@ -314,28 +388,6 @@ class TodayController extends AsyncNotifier<TodayState> {
     }
   }
 
-  bool _shouldShowFlexibleWeeklyActivity({
-    required Activity activity,
-    required DateTime date,
-    required List<DailyActivityLog> allLogs,
-  }) {
-    final weekStart = _startOfWeek(date);
-    final previousDay = date.subtract(const Duration(days: 1));
-    final completedBeforeToday = _completedCountForWeekUntilDate(
-      activityId: activity.id,
-      allLogs: allLogs,
-      weekStart: weekStart,
-      weekEnd: weekStart.add(const Duration(days: 6)),
-      endDate: previousDay,
-    );
-    final todayLogExists = allLogs.any(
-      (log) => log.activityId == activity.id && log.dayKey == DateUtilsX.toDayKey(date),
-    );
-
-    return todayLogExists ||
-        completedBeforeToday < activity.effectiveWeeklyTargetCount;
-  }
-
   int _completedCountForWeekUntilDate({
     required String activityId,
     required List<DailyActivityLog> allLogs,
@@ -344,7 +396,8 @@ class TodayController extends AsyncNotifier<TodayState> {
     required DateTime endDate,
   }) {
     return allLogs.where((log) {
-      if (log.activityId != activityId || log.status != ActivityStatus.completed) {
+      if (log.activityId != activityId ||
+          log.status != ActivityStatus.completed) {
         return false;
       }
       final logDate = DateUtilsX.fromDayKey(log.dayKey);
@@ -352,10 +405,6 @@ class TodayController extends AsyncNotifier<TodayState> {
           !logDate.isAfter(weekEnd) &&
           !logDate.isAfter(endDate);
     }).length;
-  }
-
-  DateTime _startOfWeek(DateTime date) {
-    return date.subtract(Duration(days: date.weekday - 1));
   }
 
   bool _isCreatedBeforeDayEnd(Activity activity, DateTime date) {

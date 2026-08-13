@@ -124,9 +124,10 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       _descriptionController.text = activity.description ?? '';
       _categoryId = activity.categoryId;
       _weekdays = List<int>.from(activity.weekdays);
-      _weeklyTargetCount = activity.effectiveWeeklyTargetCount == 0
-          ? 4
-          : activity.effectiveWeeklyTargetCount;
+      _weeklyTargetCount =
+          activity.effectiveWeeklyTargetCount == 0
+              ? 4
+              : activity.effectiveWeeklyTargetCount;
       _recurrence = activity.recurrence;
       _scheduledDate = activity.scheduledDate;
       _selectedColor = activity.colorHex;
@@ -142,7 +143,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         _endTime = TimeOfDayUtils.fromMinutes(activity.endMinutes!);
       }
     } else {
-      _weekdays = [1, 2, 3, 4];
+      _weekdays = [];
       _weeklyTargetCount = 4;
       _recurrence = ActivityRecurrence.weekly;
       _iconKey = 'checklist';
@@ -172,7 +173,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditing ? 'Editar ação' : 'Nova ação'),
+        title: Text(widget.isEditing ? 'Editar iniciativa' : 'Nova iniciativa'),
       ),
       body: SafeArea(
         top: false,
@@ -192,7 +193,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Nome da ação',
+                      labelText: 'Nome da iniciativa',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -345,6 +346,10 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                     decoration: const InputDecoration(labelText: 'Cadência'),
                     items:
                         ActivityRecurrence.values
+                            .where(
+                              (recurrence) =>
+                                  recurrence != ActivityRecurrence.weeklyFixed,
+                            )
                             .map(
                               (recurrence) => DropdownMenuItem(
                                 value: recurrence,
@@ -362,14 +367,10 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                             _weeklyTargetCount = 7;
                             break;
                           case ActivityRecurrence.weekly:
-                            _weekdays =
-                                _weekdays.isEmpty ? [1, 2, 3, 4] : _weekdays;
-                            _weeklyTargetCount =
-                                _weeklyTargetCount.clamp(1, 7);
+                            _weeklyTargetCount = _weeklyTargetCount.clamp(1, 7);
                             break;
                           case ActivityRecurrence.weeklyFixed:
-                            _weekdays =
-                                _weekdays.isEmpty ? [1, 2, 3, 4, 5] : _weekdays;
+                            _weeklyTargetCount = _weeklyTargetCount.clamp(1, 7);
                             break;
                           case ActivityRecurrence.oneOff:
                             _scheduledDate ??= DateTime(2026, 7, 20);
@@ -424,13 +425,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _recurrence == ActivityRecurrence.weekly
-                        ? 'Dias sugeridos'
+                        ? 'Dias sugeridos (opcional)'
                         : 'Dias da semana',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  if (_recurrence == ActivityRecurrence.weekly ||
-                      _recurrence == ActivityRecurrence.weeklyFixed)
+                  if (_recurrence == ActivityRecurrence.weekly)
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -469,8 +469,6 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                           ? 'Essa ação aparecerá todos os dias.'
                           : _recurrence == ActivityRecurrence.weekly
                           ? 'Os dias servem como sugestão. A meta continua disponível em qualquer dia da semana até ser concluída.'
-                          : _recurrence == ActivityRecurrence.weeklyFixed
-                          ? 'Essa ação só aparece nos dias fixos escolhidos.'
                           : _recurrence == ActivityRecurrence.oneOff
                           ? 'Essa ação será exibida apenas na data definida.'
                           : _recurrence == ActivityRecurrence.monthly
@@ -582,7 +580,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   const SizedBox(height: 20),
                   FilledButton(
                     onPressed: _isSubmitting ? null : _save,
-                    child: Text(_isSubmitting ? 'Salvando...' : 'Salvar ação'),
+                    child: Text(
+                      _isSubmitting ? 'Salvando...' : 'Salvar iniciativa',
+                    ),
                   ),
                 ],
               ),
@@ -597,10 +597,6 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
     if (_isSubmitting) return;
 
     if (!_formKey.currentState!.validate()) return;
-    if (_recurrence == ActivityRecurrence.weeklyFixed && _weekdays.isEmpty) {
-      _showMessage('Selecione ao menos um dia fixo da semana.');
-      return;
-    }
     if (_recurrence == ActivityRecurrence.weekly &&
         (_weeklyTargetCount < 1 || _weeklyTargetCount > 7)) {
       _showMessage('Defina uma meta semanal entre 1 e 7 vezes.');
@@ -629,7 +625,9 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
         categoryId: _categoryId!,
         weekdays: _weekdays,
         weeklyTargetCount:
-            _recurrence == ActivityRecurrence.weekly ? _weeklyTargetCount : null,
+            _recurrence == ActivityRecurrence.weekly
+                ? _weeklyTargetCount
+                : null,
         recurrence: _recurrence,
         startMinutes:
             _startTime == null ? null : TimeOfDayUtils.toMinutes(_startTime!),
@@ -767,10 +765,7 @@ class _CategoryDraft {
 }
 
 class _WeeklyTargetCard extends StatelessWidget {
-  const _WeeklyTargetCard({
-    required this.value,
-    required this.onChanged,
-  });
+  const _WeeklyTargetCard({required this.value, required this.onChanged});
 
   final int value;
   final ValueChanged<int> onChanged;
@@ -801,9 +796,9 @@ class _WeeklyTargetCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Essa iniciativa continua disponível até completar ${value}x na semana.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.outline,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: scheme.outline),
                 ),
               ],
             ),
@@ -821,9 +816,9 @@ class _WeeklyTargetCard extends StatelessWidget {
                 child: Text(
                   '$value',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               IconButton.filledTonal(

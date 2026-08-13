@@ -15,7 +15,7 @@ extension ActivityRecurrenceValues on ActivityRecurrence {
   String get label => switch (this) {
     ActivityRecurrence.oneOff => 'Única',
     ActivityRecurrence.daily => 'Diária',
-    ActivityRecurrence.weekly => 'Meta semanal flexível',
+    ActivityRecurrence.weekly => 'Semanal',
     ActivityRecurrence.weeklyFixed => 'Semanal em dias fixos',
     ActivityRecurrence.monthly => 'Mensal',
     ActivityRecurrence.flexible => 'Sem recorrência',
@@ -26,6 +26,9 @@ class ActivityRecurrenceX {
   const ActivityRecurrenceX._();
 
   static ActivityRecurrence fromValue(String? value) {
+    if (value == ActivityRecurrence.weeklyFixed.value) {
+      return ActivityRecurrence.weekly;
+    }
     return ActivityRecurrence.values.firstWhere(
       (item) => item.value == value,
       orElse: () => ActivityRecurrence.flexible,
@@ -87,7 +90,10 @@ class Activity {
       recurrence == ActivityRecurrence.flexible;
 
   int get effectiveWeeklyTargetCount {
-    if (recurrence != ActivityRecurrence.weekly) return 0;
+    if (recurrence != ActivityRecurrence.weekly &&
+        recurrence != ActivityRecurrence.weeklyFixed) {
+      return 0;
+    }
     final fallback = weekdays.isEmpty ? 1 : weekdays.length;
     return (weeklyTargetCount ?? fallback).clamp(1, 7);
   }

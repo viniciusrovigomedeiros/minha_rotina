@@ -111,17 +111,22 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
         logs: logs,
       );
       final planned = planSnapshot.totalPlanned;
+      final plannedActivityIds = planSnapshot.activityIds.toSet();
 
       final dayLogs = logsByDay[dayKey] ?? const [];
       final completedLogs =
           dayLogs
               .where((log) => log.status == ActivityStatus.completed)
               .toList();
+      final completedPlannedLogs =
+          completedLogs
+              .where((log) => plannedActivityIds.contains(log.activityId))
+              .toList();
 
-      final completed = completedLogs.length;
+      final completed = completedPlannedLogs.length;
       totalCompleted += completed;
       totalPlanned += planned;
-      for (final completedLog in completedLogs) {
+      for (final completedLog in completedPlannedLogs) {
         final quality =
             completedLog.completionQuality ?? ActivityCompletionQuality.medium;
         completedQualities.add(quality);
@@ -129,7 +134,7 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
         completedScores.add(_resolveQualityScore(completedLog));
       }
 
-      for (final completedLog in completedLogs) {
+      for (final completedLog in completedPlannedLogs) {
         final activity =
             activities
                 .where((item) => item.id == completedLog.activityId)
@@ -177,9 +182,17 @@ class WeeklyDashboardController extends AsyncNotifier<WeeklyDashboardState> {
     for (int i = 0; i < 60; i++) {
       final date = end.subtract(Duration(days: i));
       final dayKey = DateUtilsX.toDayKey(date);
+      final planSnapshot = await dailyPlanRepository.snapshotForDay(
+        date: date,
+        activities: activities,
+        logs: logs,
+      );
+      final plannedActivityIds = planSnapshot.activityIds.toSet();
       final dayLogs = logsByDay[dayKey] ?? const [];
       final hasCompleted = dayLogs.any(
-        (log) => log.status == ActivityStatus.completed,
+        (log) =>
+            log.status == ActivityStatus.completed &&
+            plannedActivityIds.contains(log.activityId),
       );
       if (hasCompleted) {
         streak++;

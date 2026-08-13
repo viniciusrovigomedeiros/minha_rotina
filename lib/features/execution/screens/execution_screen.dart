@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../state/history_controller.dart';
@@ -40,7 +41,7 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
                 MaterialPageRoute(builder: (_) => const ActivitiesScreen()),
               );
             },
-            child: const Text('Todas as ações'),
+            child: const Text('Todas as iniciativas'),
           ),
           const SettingsActionButton(),
         ],
@@ -137,7 +138,7 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
           ).push(MaterialPageRoute(builder: (_) => const ActivityFormScreen()));
         },
         icon: const Icon(Icons.add_task_rounded),
-        label: const Text('Nova ação'),
+        label: const Text('Nova iniciativa'),
       ),
     );
   }
@@ -222,7 +223,7 @@ class _ExecutionWeekView extends ConsumerWidget {
                         _SectionTitle(
                           title: 'Ritmo por dia',
                           subtitle:
-                              'Completo, parcial ou zerado. Fica fácil enxergar o padrão da semana.',
+                              'O dia só cobra meta semanal quando ela vira necessária para fechar a semana.',
                         ),
                         const SizedBox(height: 14),
                         _WeekConsistencyGrid(days: weekDays),
@@ -410,7 +411,7 @@ class _ExecutionMonthViewState extends ConsumerState<_ExecutionMonthView> {
                         _SectionTitle(
                           title: 'Calendário do mês',
                           subtitle:
-                              'Cada dia mostra se você cumpriu tudo, parte ou nada do que estava planejado.',
+                              'A meta semanal só entra no dia quando já não dá mais para adiar.',
                         ),
                         const SizedBox(height: 14),
                         _MonthCalendar(days: monthDays),
@@ -556,7 +557,7 @@ class _PeriodHeroCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -567,37 +568,42 @@ class _PeriodHeroCard extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               subtitle,
               style: Theme.of(
                 context,
-              ).textTheme.bodyMedium?.copyWith(color: scheme.outline),
+              ).textTheme.bodySmall?.copyWith(color: scheme.outline),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                minHeight: 10,
+                minHeight: 8,
                 value: progress.clamp(0, 1),
                 backgroundColor: scheme.primary.withValues(alpha: 0.14),
                 valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
               ),
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final badge in badges) _SummaryBadge(label: badge),
-              ],
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (int index = 0; index < badges.length; index++) ...[
+                    _SummaryBadge(label: badges[index]),
+                    if (index < badges.length - 1) const SizedBox(width: 8),
+                  ],
+                ],
+              ),
             ),
           ],
         ),
@@ -615,14 +621,14 @@ class _SummaryBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.primary,
           fontWeight: FontWeight.w700,
         ),
@@ -988,12 +994,16 @@ class _ExecutionDayData {
     required this.date,
     required this.planned,
     required this.completed,
+    required this.weeklyFlexibleCompleted,
+    required this.weeklyFlexibleTarget,
     required this.future,
   });
 
   final DateTime date;
   final int planned;
   final int completed;
+  final int weeklyFlexibleCompleted;
+  final int weeklyFlexibleTarget;
   final bool future;
 
   double get progress {
@@ -1102,7 +1112,9 @@ List<_ExecutionDayData> _buildRangeDays({
       _ExecutionDayData(
         date: normalized,
         planned: summary?.totalPlanned ?? 0,
-        completed: summary?.completed ?? 0,
+        completed: summary?.completedPlanned ?? 0,
+        weeklyFlexibleCompleted: summary?.weeklyFlexibleCompleted ?? 0,
+        weeklyFlexibleTarget: summary?.weeklyFlexibleTarget ?? 0,
         future: normalized.isAfter(today),
       ),
     );
@@ -1167,6 +1179,7 @@ bool _isSameDay(DateTime a, DateTime b) {
 }
 
 _DayPalette _paletteFor(BuildContext context, _ExecutionDayStatus status) {
+  final palette = context.appPalette;
   final scheme = Theme.of(context).colorScheme;
 
   switch (status) {
@@ -1178,9 +1191,9 @@ _DayPalette _paletteFor(BuildContext context, _ExecutionDayStatus status) {
       );
     case _ExecutionDayStatus.partial:
       return _DayPalette(
-        background: const Color(0xFFFFF4CC),
-        foreground: const Color(0xFFC58A00),
-        border: const Color(0xFFFFD766),
+        background: palette.warningFill,
+        foreground: palette.warningForeground,
+        border: palette.warningBorder,
       );
     case _ExecutionDayStatus.missed:
       return _DayPalette(

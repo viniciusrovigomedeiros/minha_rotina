@@ -55,7 +55,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 selectedSummary.isEmpty ? null : selectedSummary.first;
 
             final plannedForSelectedDay = summary?.totalPlanned ?? 0;
-            final completedOnSelected = summary?.completed ?? 0;
+            final completedOnSelected = summary?.completedPlanned ?? 0;
             final completionRate =
                 plannedForSelectedDay == 0
                     ? 0.0
@@ -336,9 +336,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   ) {
     final week = days.take(7).toList();
     if (week.isEmpty) {
-      return const _WeeklyLearningSummary(
-        averageQualityLabel: 'sem dados',
-      );
+      return const _WeeklyLearningSummary(averageQualityLabel: 'sem dados');
     }
 
     final completedInWeek = week.fold<int>(
@@ -364,9 +362,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 }
 
 class _WeeklyLearningSummary {
-  const _WeeklyLearningSummary({
-    required this.averageQualityLabel,
-  });
+  const _WeeklyLearningSummary({required this.averageQualityLabel});
 
   final String averageQualityLabel;
 }

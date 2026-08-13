@@ -17,19 +17,32 @@ class TodayProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (rate * 100).round();
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark ? scheme.onSurface : scheme.onPrimary;
+    final gradientColors =
+        isDark
+            ? [
+              Color.lerp(scheme.surfaceContainerHigh, scheme.primary, 0.18) ??
+                  scheme.surfaceContainerHigh,
+              Color.lerp(scheme.surfaceContainer, scheme.primary, 0.10) ??
+                  scheme.surfaceContainer,
+            ]
+            : [scheme.primary, _lighten(scheme.primary, 0.14)];
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            _lighten(Theme.of(context).colorScheme.primary, 0.14),
-          ],
+          colors: gradientColors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
+        border:
+            isDark
+                ? Border.all(color: scheme.outline.withValues(alpha: 0.65))
+                : null,
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -42,7 +55,7 @@ class TodayProgressCard extends StatelessWidget {
                   child: Text(
                     'Progresso de hoje',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Colors.white,
+                      color: foreground,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -50,7 +63,7 @@ class TodayProgressCard extends StatelessWidget {
                 Text(
                   '$percent%',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
+                    color: foreground,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -62,8 +75,13 @@ class TodayProgressCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 minHeight: 6,
                 value: rate,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                backgroundColor:
+                    isDark
+                        ? scheme.onSurface.withValues(alpha: 0.10)
+                        : foreground.withValues(alpha: 0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDark ? scheme.primary : foreground,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -96,17 +114,22 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark ? scheme.onSurface : scheme.onPrimary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
+        color: foreground.withValues(alpha: isDark ? 0.06 : 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        border: Border.all(
+          color: foreground.withValues(alpha: isDark ? 0.12 : 0.25),
+        ),
       ),
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Colors.white,
+          color: foreground,
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),

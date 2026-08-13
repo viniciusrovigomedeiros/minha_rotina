@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/activity_completion_payload.dart';
 import '../../../data/models/activity_completion_quality.dart';
 
@@ -26,7 +27,7 @@ class CompletionQualityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _paletteFor(quality);
+    final palette = _paletteFor(context, quality);
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 8 : 10,
@@ -210,24 +211,29 @@ class _MiniInfoTag extends StatelessWidget {
   }
 }
 
-_CompletionQualityPalette _paletteFor(ActivityCompletionQuality quality) {
+_CompletionQualityPalette _paletteFor(
+  BuildContext context,
+  ActivityCompletionQuality quality,
+) {
+  final palette = context.appPalette;
+
   return switch (quality) {
-    ActivityCompletionQuality.low => const _CompletionQualityPalette(
-      background: Color(0xFFFFF1E7),
-      border: Color(0xFFF2D3B9),
-      foreground: Color(0xFFB86A1A),
+    ActivityCompletionQuality.low => _CompletionQualityPalette(
+      background: palette.warningFill,
+      border: palette.warningBorder,
+      foreground: palette.warningForeground,
       icon: Icons.sentiment_dissatisfied_rounded,
     ),
-    ActivityCompletionQuality.medium => const _CompletionQualityPalette(
-      background: Color(0xFFEAF2FF),
-      border: Color(0xFFC8DAFF),
-      foreground: Color(0xFF4268D6),
+    ActivityCompletionQuality.medium => _CompletionQualityPalette(
+      background: palette.infoFill,
+      border: palette.infoBorder,
+      foreground: palette.infoForeground,
       icon: Icons.sentiment_neutral_rounded,
     ),
-    ActivityCompletionQuality.high => const _CompletionQualityPalette(
-      background: Color(0xFFE8F8EF),
-      border: Color(0xFFC8E9D7),
-      foreground: Color(0xFF2E9E6E),
+    ActivityCompletionQuality.high => _CompletionQualityPalette(
+      background: palette.successFill,
+      border: palette.successBorder,
+      foreground: palette.successForeground,
       icon: Icons.sentiment_very_satisfied_rounded,
     ),
   };

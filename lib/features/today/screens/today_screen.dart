@@ -32,6 +32,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         final selectedDate = todayState.date;
         final isViewingToday = _isSameDay(selectedDate, now);
         final categories = categoriesAsync.valueOrNull ?? const [];
+        final bottomSpacing = MediaQuery.paddingOf(context).bottom + 132;
 
         return SafeArea(
           bottom: false,
@@ -39,7 +40,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             onRefresh:
                 () => ref.read(todayControllerProvider.notifier).reload(),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
+              padding: EdgeInsets.fromLTRB(14, 16, 14, bottomSpacing),
               children: [
                 TodayProgressCard(
                   total: todayState.total,
@@ -56,7 +57,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Conclua cada tarefa com checklist e nota de qualidade.',
+                  'Essas iniciativas contam para o progresso de hoje.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),
@@ -136,14 +137,14 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 if (todayState.weeklyGoalItems.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(
-                    'Metas flexíveis da semana',
+                    'Metas da semana',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Aparecem até você bater a meta semanal, mesmo fora dos dias sugeridos.',
+                    'A tag mostra o último dia para começar sem perder a meta da semana.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.outline,
                     ),

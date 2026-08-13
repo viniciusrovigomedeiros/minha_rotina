@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/utils/time_format.dart';
+import '../../../data/models/activity.dart';
 import '../../../data/models/activity_completion_payload.dart';
 import '../../../data/models/activity_status.dart';
 import '../../../data/models/category.dart';
@@ -29,18 +31,22 @@ class TodayActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = item.status;
+    final scheme = Theme.of(context).colorScheme;
     final categoryColor =
-        item.activity.colorOrNull ??
-        category?.color ??
-        Theme.of(context).colorScheme.primary;
+        item.activity.colorOrNull ?? category?.color ?? scheme.primary;
     final meta = _buildMeta();
     final description = item.activity.description?.trim();
     final hasDescription = description != null && description.isNotEmpty;
+    final highlightDueToday =
+        item.weeklyTargetCount != null && item.isDueTodayInWeeklyGoals;
 
     return InkWell(
       onTap: onOpen,
-      child: Padding(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: const BoxDecoration(),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -63,24 +69,66 @@ class TodayActivityCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    item.activity.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.activity.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (highlightDueToday)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(left: 6),
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    meta,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                      fontWeight: FontWeight.w600,
+                  if (item.weeklyTargetCount != null &&
+                      item.weeklyCompletedCount != null)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          meta,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).textTheme.bodySmall?.color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        _TypeMetaTag(
+                          label: _weeklyGoalTypeLabel(item.activity),
+                        ),
+                        if (item.weeklyDeadlineLabel != null)
+                          _MetaTag(
+                            label: item.weeklyDeadlineLabel!,
+                            highlighted: item.isDueTodayInWeeklyGoals,
+                          ),
+                      ],
+                    )
+                  else
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
                   if (status == ActivityStatus.completed &&
                       item.completionQuality != null) ...[
                     const SizedBox(height: 6),
@@ -137,9 +185,7 @@ class TodayActivityCard extends StatelessWidget {
   String _buildMeta() {
     final categoryName = category?.name ?? 'Sem categoria';
     if (item.weeklyTargetCount != null && item.weeklyCompletedCount != null) {
-      final recommendation =
-          item.isSuggestedToday ? 'Sugerido hoje' : 'Pode compensar hoje';
-      return '$categoryName  ·  ${item.weeklyCompletedCount}/${item.weeklyTargetCount} na semana  ·  $recommendation';
+      return '$categoryName  ·  ${item.weeklyCompletedCount}/${item.weeklyTargetCount}';
     }
     final timeLabel = TimeFormat.formatMinutesRange(
       item.activity.startMinutes,
@@ -147,6 +193,87 @@ class TodayActivityCard extends StatelessWidget {
     );
     if (timeLabel == 'Sem horário definido') return categoryName;
     return '$categoryName  ·  $timeLabel';
+  }
+
+  String _weeklyGoalTypeLabel(Activity activity) {
+    switch (activity.recurrence) {
+      case ActivityRecurrence.daily:
+        return 'Diaria';
+      case ActivityRecurrence.weekly:
+      case ActivityRecurrence.weeklyFixed:
+        return 'Semanal';
+      case ActivityRecurrence.monthly:
+        return 'Mensal';
+      case ActivityRecurrence.oneOff:
+        return 'Unica';
+      case ActivityRecurrence.flexible:
+        return 'Flexivel';
+    }
+  }
+}
+
+class _MetaTag extends StatelessWidget {
+  const _MetaTag({required this.label, required this.highlighted});
+
+  final String label;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final background =
+        highlighted
+            ? scheme.primary.withValues(alpha: 0.14)
+            : scheme.surfaceContainerHighest;
+    final foreground = highlighted ? scheme.primary : scheme.outline;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color:
+              highlighted
+                  ? scheme.primary.withValues(alpha: 0.22)
+                  : scheme.outlineVariant,
+        ),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeMetaTag extends StatelessWidget {
+  const _TypeMetaTag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: scheme.outline,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 
@@ -165,34 +292,35 @@ class _StatusActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.appPalette;
     switch (status) {
       case ActivityStatus.completed:
         return _CircleAction(
           icon: Icons.check_rounded,
-          palette: const _Palette(
-            fill: Color(0xFFE3F3EA),
-            border: Color(0xFFC8E7D8),
-            icon: Color(0xFF2E9E6E),
+          palette: _Palette(
+            fill: palette.successFill,
+            border: palette.successBorder,
+            icon: palette.successForeground,
           ),
           onTap: onReset,
         );
       case ActivityStatus.skipped:
         return _CircleAction(
           icon: Icons.close_rounded,
-          palette: const _Palette(
-            fill: Color(0xFFF6EAD9),
-            border: Color(0xFFEFD9BC),
-            icon: Color(0xFFB9832C),
+          palette: _Palette(
+            fill: palette.warningFill,
+            border: palette.warningBorder,
+            icon: palette.warningForeground,
           ),
           onTap: onReset,
         );
       case ActivityStatus.pending:
         return _CircleAction(
           icon: Icons.more_horiz_rounded,
-          palette: const _Palette(
-            fill: Color(0xFFF4F6FB),
-            border: Color(0xFFE1E6F1),
-            icon: Color(0xFF98A3BA),
+          palette: _Palette(
+            fill: palette.neutralFill,
+            border: palette.neutralBorder,
+            icon: palette.neutralForeground,
           ),
           onTap: () => _openActions(context),
         );

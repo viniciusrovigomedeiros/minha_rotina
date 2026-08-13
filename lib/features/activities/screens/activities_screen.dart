@@ -153,9 +153,7 @@ class _ActivityListTile extends StatelessWidget {
           Text('Recorrência: ${activity.recurrence.label}'),
           const SizedBox(height: 2),
           if (activity.recurrence == ActivityRecurrence.weekly) ...[
-            Text(
-              'Meta: ${activity.effectiveWeeklyTargetCount}x por semana',
-            ),
+            Text('Meta: ${activity.effectiveWeeklyTargetCount}x por semana'),
             const SizedBox(height: 2),
           ],
           Text(
@@ -197,7 +195,6 @@ class _ActivityListTile extends StatelessWidget {
   String _daysLabel(Activity activity) {
     return switch (activity.recurrence) {
       ActivityRecurrence.weekly => 'Sugestões',
-      ActivityRecurrence.weeklyFixed => 'Dias fixos',
       _ => 'Dias',
     };
   }

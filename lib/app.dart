@@ -14,11 +14,16 @@ class MinhaRotinaApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(userSettingsControllerProvider).valueOrNull;
     final themeKey = settings?.themeKey ?? 'blue';
+    final themeMode = AppTheme.themeModeByKey(
+      settings?.themeModeKey ?? 'system',
+    );
 
     return MaterialApp(
       title: AppStrings.appTitle,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(themeKey: themeKey),
+      darkTheme: AppTheme.dark(themeKey: themeKey),
+      themeMode: themeMode,
       locale: const Locale('pt', 'BR'),
       supportedLocales: const [Locale('pt', 'BR')],
       localizationsDelegates: const [
