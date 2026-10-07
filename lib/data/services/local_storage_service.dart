@@ -19,6 +19,7 @@ class LocalStorageService {
   static const String okrObjectivesBoxName = 'okr_objectives_box';
   static const String keyResultsBoxName = 'key_results_box';
   static const String keyResultCheckInsBoxName = 'key_result_check_ins_box';
+  static const String cloudSyncBoxName = 'cloud_sync_box';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -36,6 +37,7 @@ class LocalStorageService {
       Hive.openBox<Map>(okrObjectivesBoxName),
       Hive.openBox<Map>(keyResultsBoxName),
       Hive.openBox<Map>(keyResultCheckInsBoxName),
+      Hive.openBox<dynamic>(cloudSyncBoxName),
     ]);
 
     await metadataBox.delete(legacyMotivationPhrasesKey);
@@ -64,4 +66,19 @@ class LocalStorageService {
   static Box<Map> get keyResultsBox => Hive.box<Map>(keyResultsBoxName);
   static Box<Map> get keyResultCheckInsBox =>
       Hive.box<Map>(keyResultCheckInsBoxName);
+  static Box<dynamic> get cloudSyncBox => Hive.box<dynamic>(cloudSyncBoxName);
+
+  static List<Box<Map>> get syncableBoxes => [
+    activitiesBox,
+    dailyLogsBox,
+    dailyPlansBox,
+    weeklyGoalsBox,
+    dailyClosuresBox,
+    settingsBox,
+    categoriesBox,
+    okrCyclesBox,
+    okrObjectivesBox,
+    keyResultsBox,
+    keyResultCheckInsBox,
+  ];
 }

@@ -91,6 +91,48 @@ void main() {
       },
     );
 
+    test(
+      'nao marca faça hoje para meta semanal concluida hoje antes da urgencia',
+      () {
+        final activity = Activity(
+          id: 'gym',
+          name: 'Academia',
+          categoryId: 'health',
+          weekdays: const [1, 3, 5],
+          weeklyTargetCount: 4,
+          isActive: true,
+          remindersEnabled: false,
+          createdAt: DateTime(2026, 8, 3),
+          updatedAt: DateTime(2026, 8, 3),
+          recurrence: ActivityRecurrence.weekly,
+        );
+
+        final logs = [
+          DailyActivityLog(
+            id: 'log-1',
+            activityId: 'gym',
+            dayKey: '2026-08-04',
+            status: ActivityStatus.completed,
+            updatedAt: DateTime(2026, 8, 4, 8),
+          ),
+        ];
+
+        final label = ActivityPlanningUtils.deadlineLabelForWeeklyGoalActivity(
+          activity: activity,
+          date: DateTime(2026, 8, 4),
+          logs: logs,
+        );
+        final isDueToday = ActivityPlanningUtils.isDueTodayInWeeklyGoals(
+          activity: activity,
+          date: DateTime(2026, 8, 4),
+          logs: logs,
+        );
+
+        expect(label, 'Faça até sex');
+        expect(isDueToday, isFalse);
+      },
+    );
+
     test('mantem meta semanal disponivel ate bater a quantidade da semana', () {
       final activity = Activity(
         id: 'gym',
@@ -123,6 +165,101 @@ void main() {
 
       expect(shouldShow, isTrue);
     });
+
+    test('calcula acumulado diario no periodo do okr ate a data', () {
+      final activity = Activity(
+        id: 'water',
+        name: 'Beber agua',
+        categoryId: 'health',
+        weekdays: const [],
+        isActive: true,
+        remindersEnabled: false,
+        createdAt: DateTime(2026, 8, 3),
+        updatedAt: DateTime(2026, 8, 3),
+        recurrence: ActivityRecurrence.daily,
+      );
+
+      final logs = [
+        DailyActivityLog(
+          id: 'log-1',
+          activityId: 'water',
+          dayKey: '2026-08-03',
+          status: ActivityStatus.completed,
+          updatedAt: DateTime(2026, 8, 3, 8),
+        ),
+        DailyActivityLog(
+          id: 'log-2',
+          activityId: 'water',
+          dayKey: '2026-08-04',
+          status: ActivityStatus.completed,
+          updatedAt: DateTime(2026, 8, 4, 8),
+        ),
+        DailyActivityLog(
+          id: 'log-3',
+          activityId: 'water',
+          dayKey: '2026-08-06',
+          status: ActivityStatus.completed,
+          updatedAt: DateTime(2026, 8, 6, 8),
+        ),
+      ];
+
+      final progress = ActivityPlanningUtils.progressInPeriodUntilDate(
+        activity: activity,
+        logs: logs,
+        periodStart: DateTime(2026, 7, 1),
+        periodEnd: DateTime(2026, 9, 30),
+        date: DateTime(2026, 8, 7),
+      );
+
+      expect(progress.completedCount, 3);
+      expect(progress.plannedCount, 5);
+    });
+
+    test(
+      'calcula acumulado semanal flexivel no periodo sem inflar semana atual',
+      () {
+        final activity = Activity(
+          id: 'gym',
+          name: 'Academia',
+          categoryId: 'health',
+          weekdays: const [1, 3, 5],
+          weeklyTargetCount: 4,
+          isActive: true,
+          remindersEnabled: false,
+          createdAt: DateTime(2026, 8, 3),
+          updatedAt: DateTime(2026, 8, 3),
+          recurrence: ActivityRecurrence.weekly,
+        );
+
+        final logs = [
+          DailyActivityLog(
+            id: 'log-1',
+            activityId: 'gym',
+            dayKey: '2026-08-03',
+            status: ActivityStatus.completed,
+            updatedAt: DateTime(2026, 8, 3, 8),
+          ),
+          DailyActivityLog(
+            id: 'log-2',
+            activityId: 'gym',
+            dayKey: '2026-08-05',
+            status: ActivityStatus.completed,
+            updatedAt: DateTime(2026, 8, 5, 8),
+          ),
+        ];
+
+        final progress = ActivityPlanningUtils.progressInPeriodUntilDate(
+          activity: activity,
+          logs: logs,
+          periodStart: DateTime(2026, 7, 1),
+          periodEnd: DateTime(2026, 9, 30),
+          date: DateTime(2026, 8, 7),
+        );
+
+        expect(progress.completedCount, 2);
+        expect(progress.plannedCount, 2);
+      },
+    );
 
     test('inclui meta diaria na secao semanal com alvo da semana', () {
       final activity = Activity(
@@ -251,10 +388,11 @@ void main() {
         scheduledDate: DateTime(2026, 1, 16),
       );
 
-      final oneOffDate = ActivityPlanningUtils.relevantDateForWeeklyGoalsSection(
-        activity: oneOff,
-        date: DateTime(2026, 8, 12),
-      );
+      final oneOffDate =
+          ActivityPlanningUtils.relevantDateForWeeklyGoalsSection(
+            activity: oneOff,
+            date: DateTime(2026, 8, 12),
+          );
       final monthlyDate =
           ActivityPlanningUtils.relevantDateForWeeklyGoalsSection(
             activity: monthly,

@@ -2,6 +2,16 @@ import '../../data/models/activity.dart';
 import '../../data/models/activity_status.dart';
 import '../../data/models/daily_activity_log.dart';
 
+class ActivityPeriodProgress {
+  const ActivityPeriodProgress({
+    required this.completedCount,
+    required this.plannedCount,
+  });
+
+  final int completedCount;
+  final int plannedCount;
+}
+
 class ActivityPlanningUtils {
   const ActivityPlanningUtils._();
 
@@ -16,7 +26,7 @@ class ActivityPlanningUtils {
     return activities
         .where((activity) {
           if (respectCurrentActiveFlag && !activity.isActive) return false;
-          if (!_isCreatedBeforeDayEnd(activity, normalizedDate)) return false;
+          if (!activity.isWithinPeriod(normalizedDate)) return false;
 
           switch (activity.recurrence) {
             case ActivityRecurrence.daily:
@@ -46,13 +56,14 @@ class ActivityPlanningUtils {
     required List<DailyActivityLog> logs,
   }) {
     if (activity.recurrence != ActivityRecurrence.weekly) return false;
-    if (!_isCreatedBeforeDayEnd(activity, date)) return false;
+    if (!activity.isWithinPeriod(date)) return false;
 
     final normalizedDate = _normalize(date);
     final weekStart = startOfWeek(normalizedDate);
     final previousDay = normalizedDate.subtract(const Duration(days: 1));
     final completedBeforeToday = completedCountForWeekUntilDate(
       activityId: activity.id,
+      activity: activity,
       logs: logs,
       weekStart: weekStart,
       weekEnd: weekStart.add(const Duration(days: 6)),
@@ -64,7 +75,11 @@ class ActivityPlanningUtils {
     );
 
     return hasLogForDay ||
-        completedBeforeToday < activity.effectiveWeeklyTargetCount;
+        completedBeforeToday <
+            weeklyTargetCountForActivity(
+              activity: activity,
+              date: normalizedDate,
+            );
   }
 
   static bool shouldShowInWeeklyGoalsSection({
@@ -76,7 +91,7 @@ class ActivityPlanningUtils {
     final weekStart = startOfWeek(normalizedDate);
     final weekEnd = weekStart.add(const Duration(days: 6));
 
-    if (!activity.isActive || !_isCreatedBeforeDayEnd(activity, weekEnd)) {
+    if (!activity.isActive || !activity.isWithinPeriod(normalizedDate)) {
       return false;
     }
 
@@ -88,6 +103,7 @@ class ActivityPlanningUtils {
 
     final completedUntilToday = completedCountForWeekUntilDate(
       activityId: activity.id,
+      activity: activity,
       logs: logs,
       weekStart: weekStart,
       weekEnd: weekEnd,
@@ -110,15 +126,23 @@ class ActivityPlanningUtils {
     final weekStart = startOfWeek(normalizedDate);
     final weekEnd = weekStart.add(const Duration(days: 6));
 
+    final effectiveStart =
+        activity.effectiveStartDate.isAfter(weekStart)
+            ? activity.effectiveStartDate
+            : weekStart;
+    final effectiveEnd =
+        activity.endDate != null &&
+                _normalize(activity.endDate!).isBefore(weekEnd)
+            ? _normalize(activity.endDate!)
+            : weekEnd;
+    if (effectiveEnd.isBefore(effectiveStart)) return 0;
+    final availableDays = effectiveEnd.difference(effectiveStart).inDays + 1;
+
     switch (activity.recurrence) {
       case ActivityRecurrence.daily:
-        final createdStart = _normalize(activity.createdAt);
-        final effectiveStart =
-            createdStart.isAfter(weekStart) ? createdStart : weekStart;
-        if (effectiveStart.isAfter(weekEnd)) return 0;
-        return weekEnd.difference(effectiveStart).inDays + 1;
+        return availableDays;
       case ActivityRecurrence.weekly:
-        return activity.effectiveWeeklyTargetCount;
+        return activity.effectiveWeeklyTargetCount.clamp(0, availableDays);
       case ActivityRecurrence.weeklyFixed:
         int count = 0;
         for (
@@ -127,7 +151,7 @@ class ActivityPlanningUtils {
           cursor = cursor.add(const Duration(days: 1))
         ) {
           if (activity.weekdays.contains(cursor.weekday) &&
-              _isCreatedBeforeDayEnd(activity, cursor)) {
+              activity.isWithinPeriod(cursor)) {
             count++;
           }
         }
@@ -138,7 +162,7 @@ class ActivityPlanningUtils {
         final normalizedScheduled = _normalize(scheduledDate);
         if (normalizedScheduled.isBefore(weekStart) ||
             normalizedScheduled.isAfter(weekEnd) ||
-            !_isCreatedBeforeDayEnd(activity, normalizedScheduled)) {
+            !activity.isWithinPeriod(normalizedScheduled)) {
           return 0;
         }
         return 1;
@@ -149,7 +173,7 @@ class ActivityPlanningUtils {
           weekEnd: weekEnd,
         );
         if (occurrenceDate == null ||
-            !_isCreatedBeforeDayEnd(activity, occurrenceDate)) {
+            !activity.isWithinPeriod(occurrenceDate)) {
           return 0;
         }
         return 1;
@@ -164,6 +188,7 @@ class ActivityPlanningUtils {
     required List<DailyActivityLog> logs,
   }) {
     final normalizedDate = _normalize(date);
+    if (!activity.isWithinPeriod(normalizedDate)) return false;
 
     switch (activity.recurrence) {
       case ActivityRecurrence.weekly:
@@ -220,7 +245,8 @@ class ActivityPlanningUtils {
       activity: activity,
       date: normalizedDate,
     );
-    if (latestRelevantDate == null || latestRelevantDate.isBefore(normalizedDate)) {
+    if (latestRelevantDate == null ||
+        latestRelevantDate.isBefore(normalizedDate)) {
       return null;
     }
 
@@ -243,12 +269,13 @@ class ActivityPlanningUtils {
     required List<DailyActivityLog> logs,
   }) {
     final normalizedDate = _normalize(date);
+    if (!activity.isWithinPeriod(normalizedDate)) return false;
 
     switch (activity.recurrence) {
       case ActivityRecurrence.daily:
         return true;
       case ActivityRecurrence.weekly:
-        return shouldCountFlexibleWeeklyActivityForDay(
+        return isFlexibleWeeklyActivityDueToday(
           activity: activity,
           date: normalizedDate,
           logs: logs,
@@ -273,7 +300,7 @@ class ActivityPlanningUtils {
         activity.recurrence != ActivityRecurrence.weeklyFixed) {
       return false;
     }
-    if (!_isCreatedBeforeDayEnd(activity, date)) return false;
+    if (!activity.isWithinPeriod(date)) return false;
 
     final normalizedDate = _normalize(date);
     final weekStart = startOfWeek(normalizedDate);
@@ -281,26 +308,27 @@ class ActivityPlanningUtils {
     final previousDay = normalizedDate.subtract(const Duration(days: 1));
     final completedBeforeToday = completedCountForWeekUntilDate(
       activityId: activity.id,
+      activity: activity,
       logs: logs,
       weekStart: weekStart,
       weekEnd: weekEnd,
       endDate: previousDay,
     );
     final remainingNeeded =
-        activity.effectiveWeeklyTargetCount - completedBeforeToday;
+        weeklyTargetCountForActivity(activity: activity, date: normalizedDate) -
+        completedBeforeToday;
 
     if (remainingNeeded <= 0) return false;
-    if (_hasCompletedOnDay(
-      activityId: activity.id,
-      date: normalizedDate,
-      logs: logs,
-    )) {
-      return true;
-    }
-
-    final remainingDaysIncludingToday =
-        weekEnd.difference(normalizedDate).inDays + 1;
-    return remainingNeeded >= remainingDaysIncludingToday;
+    return _hasCompletedOnDay(
+          activityId: activity.id,
+          date: normalizedDate,
+          logs: logs,
+        ) ||
+        isFlexibleWeeklyActivityDueToday(
+          activity: activity,
+          date: normalizedDate,
+          logs: logs,
+        );
   }
 
   static String? deadlineLabelForFlexibleWeeklyActivity({
@@ -312,9 +340,9 @@ class ActivityPlanningUtils {
         activity.recurrence != ActivityRecurrence.weeklyFixed) {
       return null;
     }
-    if (!_isCreatedBeforeDayEnd(activity, date)) return null;
+    if (!activity.isWithinPeriod(date)) return null;
 
-    if (shouldCountFlexibleWeeklyActivityForDay(
+    if (isFlexibleWeeklyActivityDueToday(
       activity: activity,
       date: date,
       logs: logs,
@@ -324,16 +352,23 @@ class ActivityPlanningUtils {
 
     final normalizedDate = _normalize(date);
     final weekStart = startOfWeek(normalizedDate);
-    final weekEnd = weekStart.add(const Duration(days: 6));
+    final calendarWeekEnd = weekStart.add(const Duration(days: 6));
+    final weekEnd =
+        activity.endDate != null &&
+                _normalize(activity.endDate!).isBefore(calendarWeekEnd)
+            ? _normalize(activity.endDate!)
+            : calendarWeekEnd;
     final completedUntilToday = completedCountForWeekUntilDate(
       activityId: activity.id,
+      activity: activity,
       logs: logs,
       weekStart: weekStart,
       weekEnd: weekEnd,
       endDate: normalizedDate,
     );
     final remainingNeeded =
-        activity.effectiveWeeklyTargetCount - completedUntilToday;
+        weeklyTargetCountForActivity(activity: activity, date: normalizedDate) -
+        completedUntilToday;
 
     if (remainingNeeded <= 0) return null;
 
@@ -343,8 +378,48 @@ class ActivityPlanningUtils {
     return 'Faça até ${_weekdayShortLabel(latestStartDate.weekday)}';
   }
 
+  static bool isFlexibleWeeklyActivityDueToday({
+    required Activity activity,
+    required DateTime date,
+    required List<DailyActivityLog> logs,
+  }) {
+    if (activity.recurrence != ActivityRecurrence.weekly &&
+        activity.recurrence != ActivityRecurrence.weeklyFixed) {
+      return false;
+    }
+    if (!activity.isWithinPeriod(date)) return false;
+
+    final normalizedDate = _normalize(date);
+    final weekStart = startOfWeek(normalizedDate);
+    final calendarWeekEnd = weekStart.add(const Duration(days: 6));
+    final weekEnd =
+        activity.endDate != null &&
+                _normalize(activity.endDate!).isBefore(calendarWeekEnd)
+            ? _normalize(activity.endDate!)
+            : calendarWeekEnd;
+    final previousDay = normalizedDate.subtract(const Duration(days: 1));
+    final completedBeforeToday = completedCountForWeekUntilDate(
+      activityId: activity.id,
+      activity: activity,
+      logs: logs,
+      weekStart: weekStart,
+      weekEnd: weekEnd,
+      endDate: previousDay,
+    );
+    final remainingNeeded =
+        weeklyTargetCountForActivity(activity: activity, date: normalizedDate) -
+        completedBeforeToday;
+
+    if (remainingNeeded <= 0) return false;
+
+    final remainingDaysIncludingToday =
+        weekEnd.difference(normalizedDate).inDays + 1;
+    return remainingNeeded >= remainingDaysIncludingToday;
+  }
+
   static int completedCountForWeekUntilDate({
     required String activityId,
+    Activity? activity,
     required List<DailyActivityLog> logs,
     required DateTime weekStart,
     required DateTime weekEnd,
@@ -360,9 +435,140 @@ class ActivityPlanningUtils {
         return false;
       }
       final logDate = _fromDayKey(log.dayKey);
+      if (activity != null && !activity.isWithinPeriod(logDate)) return false;
       return !logDate.isBefore(normalizedWeekStart) &&
           !logDate.isAfter(normalizedWeekEnd) &&
           !logDate.isAfter(normalizedEndDate);
+    }).length;
+  }
+
+  static ActivityPeriodProgress progressInPeriodUntilDate({
+    required Activity activity,
+    required List<DailyActivityLog> logs,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime date,
+  }) {
+    final requestedStart = _normalize(periodStart);
+    final normalizedStart =
+        activity.effectiveStartDate.isAfter(requestedStart)
+            ? activity.effectiveStartDate
+            : requestedStart;
+    final requestedEnd = _normalize(periodEnd);
+    final normalizedPeriodEnd =
+        activity.endDate != null &&
+                _normalize(activity.endDate!).isBefore(requestedEnd)
+            ? _normalize(activity.endDate!)
+            : requestedEnd;
+    final normalizedDate = _normalize(date);
+    final cappedDate =
+        normalizedDate.isAfter(normalizedPeriodEnd)
+            ? normalizedPeriodEnd
+            : normalizedDate;
+
+    if (cappedDate.isBefore(normalizedStart)) {
+      return const ActivityPeriodProgress(completedCount: 0, plannedCount: 0);
+    }
+
+    return ActivityPeriodProgress(
+      completedCount: completedCountForActivityInRange(
+        activityId: activity.id,
+        logs: logs,
+        startDate: normalizedStart,
+        endDate: cappedDate,
+      ),
+      plannedCount: plannedCountForActivityInPeriodUntilDate(
+        activity: activity,
+        periodStart: normalizedStart,
+        periodEnd: normalizedPeriodEnd,
+        date: cappedDate,
+      ),
+    );
+  }
+
+  static int plannedCountForActivityInPeriodUntilDate({
+    required Activity activity,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime date,
+  }) {
+    final requestedStart = _normalize(periodStart);
+    final normalizedStart =
+        activity.effectiveStartDate.isAfter(requestedStart)
+            ? activity.effectiveStartDate
+            : requestedStart;
+    final requestedEnd = _normalize(periodEnd);
+    final normalizedPeriodEnd =
+        activity.endDate != null &&
+                _normalize(activity.endDate!).isBefore(requestedEnd)
+            ? _normalize(activity.endDate!)
+            : requestedEnd;
+    final normalizedDate = _normalize(date);
+    final cappedDate =
+        normalizedDate.isAfter(normalizedPeriodEnd)
+            ? normalizedPeriodEnd
+            : normalizedDate;
+    final createdStart = activity.effectiveStartDate;
+    final effectiveStart =
+        createdStart.isAfter(normalizedStart) ? createdStart : normalizedStart;
+
+    if (cappedDate.isBefore(effectiveStart)) return 0;
+
+    switch (activity.recurrence) {
+      case ActivityRecurrence.daily:
+        return cappedDate.difference(effectiveStart).inDays + 1;
+      case ActivityRecurrence.weekly:
+        return _plannedFlexibleWeeklyCountInPeriodUntilDate(
+          activity: activity,
+          periodStart: effectiveStart,
+          periodEnd: normalizedPeriodEnd,
+          date: cappedDate,
+        );
+      case ActivityRecurrence.weeklyFixed:
+        return _countMatchingDates(
+          startDate: effectiveStart,
+          endDate: cappedDate,
+          predicate: (cursor) => activity.weekdays.contains(cursor.weekday),
+        );
+      case ActivityRecurrence.oneOff:
+        final scheduledDate = activity.scheduledDate;
+        if (scheduledDate == null) return 0;
+        final normalizedScheduled = _normalize(scheduledDate);
+        return !normalizedScheduled.isBefore(effectiveStart) &&
+                !normalizedScheduled.isAfter(cappedDate)
+            ? 1
+            : 0;
+      case ActivityRecurrence.monthly:
+        final scheduledDate = activity.scheduledDate;
+        if (scheduledDate == null) return 0;
+        return _countMatchingDates(
+          startDate: effectiveStart,
+          endDate: cappedDate,
+          predicate: (cursor) => cursor.day == scheduledDate.day,
+        );
+      case ActivityRecurrence.flexible:
+        return 0;
+    }
+  }
+
+  static int completedCountForActivityInRange({
+    required String activityId,
+    required List<DailyActivityLog> logs,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    final normalizedStart = _normalize(startDate);
+    final normalizedEnd = _normalize(endDate);
+    if (normalizedEnd.isBefore(normalizedStart)) return 0;
+
+    return logs.where((log) {
+      if (log.activityId != activityId ||
+          log.status != ActivityStatus.completed) {
+        return false;
+      }
+      final logDate = _fromDayKey(log.dayKey);
+      return !logDate.isBefore(normalizedStart) &&
+          !logDate.isAfter(normalizedEnd);
     }).length;
   }
 
@@ -410,11 +616,18 @@ class ActivityPlanningUtils {
     final weekStart = startOfWeek(normalizedDate);
     final weekEnd = weekStart.add(const Duration(days: 6));
 
+    final effectiveEnd =
+        activity.endDate != null &&
+                _normalize(activity.endDate!).isBefore(weekEnd)
+            ? _normalize(activity.endDate!)
+            : weekEnd;
+    if (!activity.isWithinPeriod(effectiveEnd)) return null;
+
     switch (activity.recurrence) {
       case ActivityRecurrence.daily:
-        return weekEnd;
+        return effectiveEnd;
       case ActivityRecurrence.weekly:
-        return weekEnd;
+        return effectiveEnd;
       case ActivityRecurrence.weeklyFixed:
         DateTime? latest;
         for (
@@ -423,7 +636,7 @@ class ActivityPlanningUtils {
           cursor = cursor.add(const Duration(days: 1))
         ) {
           if (activity.weekdays.contains(cursor.weekday) &&
-              _isCreatedBeforeDayEnd(activity, cursor)) {
+              activity.isWithinPeriod(cursor)) {
             latest = cursor;
           }
         }
@@ -433,7 +646,8 @@ class ActivityPlanningUtils {
         if (scheduledDate == null) return null;
         final normalizedScheduled = _normalize(scheduledDate);
         if (normalizedScheduled.isBefore(weekStart) ||
-            normalizedScheduled.isAfter(weekEnd)) {
+            normalizedScheduled.isAfter(weekEnd) ||
+            !activity.isWithinPeriod(normalizedScheduled)) {
           return null;
         }
         return normalizedScheduled;
@@ -461,7 +675,9 @@ class ActivityPlanningUtils {
       !cursor.isAfter(weekEnd);
       cursor = cursor.add(const Duration(days: 1))
     ) {
-      if (cursor.day == scheduledDate.day) return cursor;
+      if (cursor.day == scheduledDate.day && activity.isWithinPeriod(cursor)) {
+        return cursor;
+      }
     }
     return null;
   }
@@ -486,5 +702,72 @@ class ActivityPlanningUtils {
     const labels = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
     if (weekday < 1 || weekday > 7) return 'dia';
     return labels[weekday - 1];
+  }
+
+  static int _plannedFlexibleWeeklyCountInPeriodUntilDate({
+    required Activity activity,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime date,
+  }) {
+    final requestedStart = _normalize(periodStart);
+    final normalizedStart =
+        activity.effectiveStartDate.isAfter(requestedStart)
+            ? activity.effectiveStartDate
+            : requestedStart;
+    final normalizedEnd = _normalize(periodEnd);
+    final normalizedDate = _normalize(date);
+    int total = 0;
+
+    DateTime cursor = startOfWeek(normalizedStart);
+    while (!cursor.isAfter(normalizedDate)) {
+      final weekStart = cursor;
+      final weekEnd = weekStart.add(const Duration(days: 6));
+      final activeWeekStart =
+          weekStart.isAfter(normalizedStart) ? weekStart : normalizedStart;
+      final activeWeekDeadline =
+          weekEnd.isBefore(normalizedEnd) ? weekEnd : normalizedEnd;
+
+      if (!activeWeekDeadline.isBefore(activeWeekStart)) {
+        final activeDaysInWeek =
+            activeWeekDeadline.difference(activeWeekStart).inDays + 1;
+        final weekCapacity =
+            activity.effectiveWeeklyTargetCount
+                .clamp(0, activeDaysInWeek)
+                .toInt();
+
+        if (!normalizedDate.isBefore(activeWeekDeadline)) {
+          total += weekCapacity;
+        } else if (!normalizedDate.isBefore(activeWeekStart)) {
+          final remainingActiveDaysAfterDate =
+              activeWeekDeadline.difference(normalizedDate).inDays;
+          total +=
+              (weekCapacity - remainingActiveDaysAfterDate)
+                  .clamp(0, weekCapacity)
+                  .toInt();
+        }
+      }
+
+      cursor = cursor.add(const Duration(days: 7));
+    }
+
+    return total;
+  }
+
+  static int _countMatchingDates({
+    required DateTime startDate,
+    required DateTime endDate,
+    required bool Function(DateTime cursor) predicate,
+  }) {
+    if (endDate.isBefore(startDate)) return 0;
+    int count = 0;
+    for (
+      DateTime cursor = startDate;
+      !cursor.isAfter(endDate);
+      cursor = cursor.add(const Duration(days: 1))
+    ) {
+      if (predicate(cursor)) count++;
+    }
+    return count;
   }
 }

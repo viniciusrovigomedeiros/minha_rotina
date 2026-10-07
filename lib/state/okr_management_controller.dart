@@ -6,6 +6,7 @@ import '../data/models/key_result_check_in.dart';
 import '../data/models/okr_cycle.dart';
 import '../data/models/okr_objective.dart';
 import 'activities_controller.dart';
+import 'okr_widget_sync.dart';
 import 'okr_workspace_controller.dart';
 import 'providers.dart';
 
@@ -76,6 +77,7 @@ class OkrManagementController extends AsyncNotifier<void> {
 
     await ref.read(okrCycleRepositoryProvider).upsert(cycle);
     ref.invalidate(okrWorkspaceControllerProvider);
+    await ref.read(okrWidgetSyncProvider).refresh();
   }
 
   Future<void> saveObjective({
@@ -153,6 +155,7 @@ class OkrManagementController extends AsyncNotifier<void> {
     }
 
     ref.invalidate(okrWorkspaceControllerProvider);
+    await ref.read(okrWidgetSyncProvider).refresh();
   }
 
   Future<void> deleteObjective(String objectiveId) async {
@@ -178,6 +181,7 @@ class OkrManagementController extends AsyncNotifier<void> {
 
     ref.invalidate(activitiesControllerProvider);
     ref.invalidate(okrWorkspaceControllerProvider);
+    await ref.read(okrWidgetSyncProvider).refresh();
   }
 
   Future<void> submitObjectiveCheckIn({
@@ -227,5 +231,6 @@ class OkrManagementController extends AsyncNotifier<void> {
     }
 
     ref.invalidate(okrWorkspaceControllerProvider);
+    await ref.read(okrWidgetSyncProvider).refresh();
   }
 }

@@ -20,24 +20,12 @@ class TodayProgressCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final foreground = isDark ? scheme.onSurface : scheme.onPrimary;
-    final gradientColors =
-        isDark
-            ? [
-              Color.lerp(scheme.surfaceContainerHigh, scheme.primary, 0.18) ??
-                  scheme.surfaceContainerHigh,
-              Color.lerp(scheme.surfaceContainer, scheme.primary, 0.10) ??
-                  scheme.surfaceContainer,
-            ]
-            : [scheme.primary, _lighten(scheme.primary, 0.14)];
+    final background = isDark ? scheme.surfaceContainerHigh : scheme.primary;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: background,
         borderRadius: BorderRadius.circular(16),
         border:
             isDark
@@ -98,12 +86,6 @@ class TodayProgressCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _lighten(Color color, double amount) {
-    final hsl = HSLColor.fromColor(color);
-    final lightness = (hsl.lightness + amount).clamp(0, 1).toDouble();
-    return hsl.withLightness(lightness).toColor();
   }
 }
 

@@ -6,6 +6,7 @@ import '../../../data/models/activity.dart';
 import '../../../state/activities_controller.dart';
 import '../../../state/okr_workspace_controller.dart';
 import 'activity_form_screen.dart';
+import '../../social/screens/social_hub_screen.dart';
 
 class ActivitiesScreen extends ConsumerWidget {
   const ActivitiesScreen({super.key});
@@ -14,111 +15,153 @@ class ActivitiesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activitiesAsync = ref.watch(activitiesControllerProvider);
     final workspace = ref.watch(okrWorkspaceControllerProvider).valueOrNull;
-    final objectiveTitles = {
+    final objectiveTitles = <String, String>{
       for (final item in workspace?.allObjectives ?? const <dynamic>[])
         item.objective.id: item.objective.title,
     };
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Iniciativas e tarefas')),
-      body: SafeArea(
-        top: false,
-        child: activitiesAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(child: Text('Erro ao carregar: $error')),
-          data: (activities) {
-            if (activities.isEmpty) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'Você ainda não cadastrou iniciativas ou tarefas.\nToque em + para começar.',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh:
-                  () =>
-                      ref.read(activitiesControllerProvider.notifier).reload(),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Iniciativas e tarefas'),
+          bottom: const TabBar(
+            tabs: [Tab(text: 'Atuais'), Tab(text: 'Passadas')],
+          ),
+        ),
+        body: SafeArea(
+          top: false,
+          child: activitiesAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error:
+                (error, _) => Center(child: Text('Erro ao carregar: $error')),
+            data: (activities) {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final current = <Activity>[];
+              final past = <Activity>[];
+              for (final activity in activities) {
+                (_isPastActivity(activity, today) ? past : current).add(
+                  activity,
+                );
+              }
+              return TabBarView(
                 children: [
-                  Card(
-                    child: Column(
-                      children: [
-                        for (
-                          int index = 0;
-                          index < activities.length;
-                          index++
-                        ) ...[
-                          Builder(
-                            builder: (context) {
-                              final activity = activities[index];
-
-                              return _ActivityListTile(
-                                activity: activity,
-                                objectiveTitle:
-                                    activity.objectiveId == null
-                                        ? null
-                                        : objectiveTitles[activity.objectiveId],
-                                onEdit: () async {
-                                  await Navigator.of(context).push<bool>(
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => ActivityFormScreen(
-                                            activity: activity,
-                                          ),
-                                    ),
-                                  );
-                                  await ref
-                                      .read(
-                                        activitiesControllerProvider.notifier,
-                                      )
-                                      .reload();
-                                },
-                                onDelete: () async {
-                                  await ref
-                                      .read(
-                                        activitiesControllerProvider.notifier,
-                                      )
-                                      .delete(activity.id);
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Atividade excluída.'),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                          if (index < activities.length - 1)
-                            const Divider(height: 1, thickness: 1),
-                        ],
-                      ],
-                    ),
+                  _buildList(
+                    context,
+                    ref,
+                    current,
+                    objectiveTitles,
+                    emptyMessage:
+                        'Nenhuma iniciativa atual.\nToque em + para cadastrar uma nova.',
+                  ),
+                  _buildList(
+                    context,
+                    ref,
+                    past,
+                    objectiveTitles,
+                    emptyMessage: 'Nenhuma iniciativa passada.',
                   ),
                 ],
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.of(context).push<bool>(
-            MaterialPageRoute(builder: (_) => const ActivityFormScreen()),
-          );
-          await ref.read(activitiesControllerProvider.notifier).reload();
-        },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Nova iniciativa'),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            await Navigator.of(context).push<bool>(
+              MaterialPageRoute(builder: (_) => const ActivityFormScreen()),
+            );
+            await ref.read(activitiesControllerProvider.notifier).reload();
+          },
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Nova iniciativa'),
+        ),
       ),
     );
   }
+
+  Widget _buildList(
+    BuildContext context,
+    WidgetRef ref,
+    List<Activity> activities,
+    Map<String, String> objectiveTitles, {
+    required String emptyMessage,
+  }) {
+    return RefreshIndicator(
+      onRefresh: () => ref.read(activitiesControllerProvider.notifier).reload(),
+      child:
+          activities.isEmpty
+              ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                children: [Text(emptyMessage, textAlign: TextAlign.center)],
+              )
+              : ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+                itemCount: activities.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final activity = activities[index];
+                  return Card(
+                    margin: EdgeInsets.zero,
+                    child: _ActivityListTile(
+                      activity: activity,
+                      objectiveTitle:
+                          activity.objectiveId == null
+                              ? null
+                              : objectiveTitles[activity.objectiveId],
+                      onEdit: () async {
+                        await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder:
+                                (_) => ActivityFormScreen(activity: activity),
+                          ),
+                        );
+                        await ref
+                            .read(activitiesControllerProvider.notifier)
+                            .reload();
+                      },
+                      onDelete: () async {
+                        await ref
+                            .read(activitiesControllerProvider.notifier)
+                            .delete(activity.id);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Atividade excluída.')),
+                        );
+                      },
+                      onCreateSocialChallenge:
+                          activity.objectiveId == null
+                              ? () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => SocialHubScreen(
+                                        initialChallengeTitle: activity.name,
+                                        initialChallengeDescription:
+                                            'Desafio criado a partir da iniciativa "${activity.name}".',
+                                      ),
+                                ),
+                              )
+                              : null,
+                    ),
+                  );
+                },
+              ),
+    );
+  }
+}
+
+bool _isPastActivity(Activity activity, DateTime today) {
+  if (!activity.isActive) return true;
+  final deadline =
+      activity.endDate ??
+      (activity.recurrence == ActivityRecurrence.oneOff
+          ? activity.scheduledDate
+          : null);
+  if (deadline == null) return false;
+  return DateTime(deadline.year, deadline.month, deadline.day).isBefore(today);
 }
 
 class _ActivityListTile extends StatelessWidget {
@@ -127,15 +170,27 @@ class _ActivityListTile extends StatelessWidget {
     required this.objectiveTitle,
     required this.onEdit,
     required this.onDelete,
+    this.onCreateSocialChallenge,
   });
 
   final Activity activity;
   final String? objectiveTitle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onCreateSocialChallenge;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final status =
+        !activity.isActive
+            ? 'inativa'
+            : _isPastActivity(activity, today)
+            ? 'encerrada'
+            : activity.effectiveStartDate.isAfter(today)
+            ? 'prevista'
+            : 'ativa';
     return ListTile(
       dense: true,
       visualDensity: VisualDensity.compact,
@@ -148,6 +203,12 @@ class _ActivityListTile extends StatelessWidget {
           const SizedBox(height: 2),
           if (objectiveTitle != null) ...[
             Text('Objetivo: $objectiveTitle'),
+            const SizedBox(height: 2),
+          ],
+          if (activity.endDate != null) ...[
+            Text(
+              'Período: ${_dateLabel(activity.effectiveStartDate)} a ${_dateLabel(activity.endDate!)}',
+            ),
             const SizedBox(height: 2),
           ],
           Text('Recorrência: ${activity.recurrence.label}'),
@@ -163,10 +224,10 @@ class _ActivityListTile extends StatelessWidget {
           Text('${_daysLabel(activity)}: ${_weekdaysLabel(activity)}'),
           const SizedBox(height: 2),
           Text(
-            activity.isActive ? 'Status: ativa' : 'Status: inativa',
+            'Status: $status',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color:
-                  activity.isActive
+                  !_isPastActivity(activity, today)
                       ? Theme.of(context).colorScheme.secondary
                       : Theme.of(context).colorScheme.outline,
               fontWeight: FontWeight.w600,
@@ -182,15 +243,26 @@ class _ActivityListTile extends StatelessWidget {
           if (value == 'delete') {
             onDelete();
           }
+          if (value == 'social') {
+            onCreateSocialChallenge?.call();
+          }
         },
         itemBuilder:
-            (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('Editar')),
-              PopupMenuItem(value: 'delete', child: Text('Excluir')),
+            (_) => [
+              const PopupMenuItem(value: 'edit', child: Text('Editar')),
+              if (onCreateSocialChallenge != null)
+                const PopupMenuItem(
+                  value: 'social',
+                  child: Text('Criar desafio social'),
+                ),
+              const PopupMenuItem(value: 'delete', child: Text('Excluir')),
             ],
       ),
     );
   }
+
+  String _dateLabel(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
   String _daysLabel(Activity activity) {
     return switch (activity.recurrence) {

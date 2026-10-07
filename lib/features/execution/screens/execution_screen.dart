@@ -11,6 +11,7 @@ import '../../../state/weekly_dashboard_controller.dart';
 import '../../activities/screens/activities_screen.dart';
 import '../../activities/screens/activity_form_screen.dart';
 import '../../shared/widgets/settings_action_button.dart';
+import '../../social/screens/social_hub_screen.dart';
 import '../../today/screens/today_screen.dart';
 
 enum _ExecutionView { today, week, month }
@@ -105,6 +106,17 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
                 ],
               ),
             ),
+          if (_selectedView == _ExecutionView.today)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _SocialNudgeCard(
+                onOpen: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SocialHubScreen()),
+                  );
+                },
+              ),
+            ),
           Padding(
             padding: EdgeInsets.fromLTRB(
               16,
@@ -132,6 +144,7 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'execution-new-initiative',
         onPressed: () {
           Navigator.of(
             context,
@@ -169,6 +182,45 @@ class _ExecutionScreenState extends ConsumerState<ExecutionScreen> {
   }
 }
 
+class _SocialNudgeCard extends StatelessWidget {
+  const _SocialNudgeCard({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      color: colorScheme.surfaceContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        child: Row(
+          children: [
+            Icon(Icons.groups_rounded, color: colorScheme.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Evolua com alguém',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text('Crie um desafio ou entre com um convite.'),
+                ],
+              ),
+            ),
+            TextButton(onPressed: onOpen, child: const Text('Abrir')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ExecutionWeekView extends ConsumerWidget {
   const _ExecutionWeekView();
 
@@ -190,6 +242,7 @@ class _ExecutionWeekView extends ConsumerWidget {
           today: now,
         );
         final summary = _PeriodExecutionSummary.fromDays(weekDays);
+        final shouldCelebrateWeek = _isPerfectCompletedWeek(weekDays);
         final dashboard = dashboardAsync.valueOrNull;
 
         return RefreshIndicator(
@@ -213,6 +266,10 @@ class _ExecutionWeekView extends ConsumerWidget {
                     '${dashboard?.currentStreak ?? summary.currentStreak} em sequência',
                   ],
                 ),
+                if (shouldCelebrateWeek) ...[
+                  const SizedBox(height: 12),
+                  const _WeekCelebrationCard(),
+                ],
                 const SizedBox(height: 12),
                 Card(
                   child: Padding(
@@ -701,6 +758,66 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+class _WeekCelebrationCard extends StatelessWidget {
+  const _WeekCelebrationCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.appPalette;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.successFill,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.successBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: palette.successForeground.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.celebration_rounded,
+              color: palette.successForeground,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Semana perfeita',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: palette.successForeground,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Parabéns. Você fechou a semana com 100% do planejado concluído.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: palette.successForeground,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _WeekConsistencyGrid extends StatelessWidget {
   const _WeekConsistencyGrid({required this.days});
 
@@ -1149,6 +1266,22 @@ int _longestStreak(List<_ExecutionDayData> days) {
   }
 
   return longest;
+}
+
+bool _isPerfectCompletedWeek(List<_ExecutionDayData> days) {
+  if (days.isEmpty || days.any((day) => day.future)) {
+    return false;
+  }
+
+  final visibleDays = days.where((day) => !day.future).toList();
+  final hasPlannedWork = visibleDays.any((day) => day.planned > 0);
+  if (!hasPlannedWork) {
+    return false;
+  }
+
+  return visibleDays.every(
+    (day) => day.planned == 0 || day.completed >= day.planned,
+  );
 }
 
 DateTime _normalize(DateTime date) => DateTime(date.year, date.month, date.day);

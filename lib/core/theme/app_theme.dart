@@ -1,17 +1,5 @@
 import 'package:flutter/material.dart';
 
-class AppThemeOption {
-  const AppThemeOption({
-    required this.key,
-    required this.label,
-    required this.primary,
-  });
-
-  final String key;
-  final String label;
-  final Color primary;
-}
-
 class AppThemeModeOption {
   const AppThemeModeOption({
     required this.key,
@@ -41,8 +29,6 @@ class AppThemePalette extends ThemeExtension<AppThemePalette> {
     required this.neutralForeground,
     required this.glassBackground,
     required this.glassBorder,
-    required this.glassGradientStart,
-    required this.glassGradientEnd,
   });
 
   final Color successFill;
@@ -59,8 +45,6 @@ class AppThemePalette extends ThemeExtension<AppThemePalette> {
   final Color neutralForeground;
   final Color glassBackground;
   final Color glassBorder;
-  final Color glassGradientStart;
-  final Color glassGradientEnd;
 
   @override
   AppThemePalette copyWith({
@@ -78,8 +62,6 @@ class AppThemePalette extends ThemeExtension<AppThemePalette> {
     Color? neutralForeground,
     Color? glassBackground,
     Color? glassBorder,
-    Color? glassGradientStart,
-    Color? glassGradientEnd,
   }) {
     return AppThemePalette(
       successFill: successFill ?? this.successFill,
@@ -96,8 +78,6 @@ class AppThemePalette extends ThemeExtension<AppThemePalette> {
       neutralForeground: neutralForeground ?? this.neutralForeground,
       glassBackground: glassBackground ?? this.glassBackground,
       glassBorder: glassBorder ?? this.glassBorder,
-      glassGradientStart: glassGradientStart ?? this.glassGradientStart,
-      glassGradientEnd: glassGradientEnd ?? this.glassGradientEnd,
     );
   }
 
@@ -131,12 +111,6 @@ class AppThemePalette extends ThemeExtension<AppThemePalette> {
           Color.lerp(glassBackground, other.glassBackground, t) ??
           glassBackground,
       glassBorder: Color.lerp(glassBorder, other.glassBorder, t) ?? glassBorder,
-      glassGradientStart:
-          Color.lerp(glassGradientStart, other.glassGradientStart, t) ??
-          glassGradientStart,
-      glassGradientEnd:
-          Color.lerp(glassGradientEnd, other.glassGradientEnd, t) ??
-          glassGradientEnd,
     );
   }
 }
@@ -152,93 +126,66 @@ extension AppThemePaletteContext on BuildContext {
 class AppTheme {
   const AppTheme._();
 
-  static const List<AppThemeOption> options = [
-    AppThemeOption(key: 'blue', label: 'Azul', primary: Color(0xFF5A7DFA)),
-    AppThemeOption(key: 'green', label: 'Verde', primary: Color(0xFF2FA36B)),
-    AppThemeOption(key: 'purple', label: 'Roxo', primary: Color(0xFF8C63F7)),
-    AppThemeOption(key: 'amber', label: 'Ambar', primary: Color(0xFFE59A2C)),
-    AppThemeOption(key: 'teal', label: 'Turquesa', primary: Color(0xFF1BA7A1)),
-    AppThemeOption(key: 'rose', label: 'Rosa', primary: Color(0xFFD95C84)),
-    AppThemeOption(
-      key: 'magenta',
-      label: 'Magenta',
-      primary: Color(0xFFE6007A),
-    ),
-    AppThemeOption(key: 'fuchsia', label: 'Fucsia', primary: Color(0xFFFF2DA6)),
-    AppThemeOption(key: 'indigo', label: 'Indigo', primary: Color(0xFF4B63E6)),
-    AppThemeOption(key: 'coral', label: 'Coral', primary: Color(0xFFDB6A55)),
-  ];
-
   static const List<AppThemeModeOption> themeModeOptions = [
     AppThemeModeOption(key: 'system', label: 'Sistema', mode: ThemeMode.system),
-    AppThemeModeOption(key: 'light', label: 'Claro', mode: ThemeMode.light),
     AppThemeModeOption(key: 'dark', label: 'Escuro', mode: ThemeMode.dark),
+    AppThemeModeOption(key: 'light', label: 'Claro', mode: ThemeMode.light),
   ];
-
-  static AppThemeOption optionByKey(String key) {
-    final matches = options.where((item) => item.key == key).toList();
-    return matches.isEmpty ? options.first : matches.first;
-  }
 
   static ThemeMode themeModeByKey(String key) {
     final matches = themeModeOptions.where((item) => item.key == key).toList();
-    return matches.isEmpty ? ThemeMode.system : matches.first.mode;
+    return matches.isEmpty ? ThemeMode.dark : matches.first.mode;
   }
 
-  static ThemeData light({String themeKey = 'blue'}) {
-    return _buildTheme(themeKey: themeKey, brightness: Brightness.light);
+  static ThemeData light() {
+    return _buildTheme(brightness: Brightness.light);
   }
 
-  static ThemeData dark({String themeKey = 'blue'}) {
-    return _buildTheme(themeKey: themeKey, brightness: Brightness.dark);
+  static ThemeData dark() {
+    return _buildTheme(brightness: Brightness.dark);
   }
 
-  static ThemeData _buildTheme({
-    required String themeKey,
-    required Brightness brightness,
-  }) {
-    final option = optionByKey(themeKey);
+  static ThemeData _buildTheme({required Brightness brightness}) {
     final isDark = brightness == Brightness.dark;
+    const lightBlue = Color(0xFF5A7DFA);
+    const darkAccent = Color(0xFF1DB954);
+    final primary = isDark ? darkAccent : lightBlue;
     final base =
         isDark
             ? ThemeData.dark(useMaterial3: true)
             : ThemeData.light(useMaterial3: true);
     final baseScheme = ColorScheme.fromSeed(
-      seedColor: option.primary,
+      seedColor: primary,
       brightness: brightness,
     );
     final scaffold =
         isDark
-            ? _blend(const Color(0xFF090909), option.primary, 0.03)
-            : _blend(const Color(0xFFF7F9FD), option.primary, 0.08);
+            ? const Color(0xFF121212)
+            : _blend(const Color(0xFFF7F9FD), primary, 0.08);
     final surface =
-        isDark
-            ? _blend(const Color(0xFF121212), option.primary, 0.04)
-            : _blend(Colors.white, option.primary, 0.03);
+        isDark ? const Color(0xFF181818) : _blend(Colors.white, primary, 0.03);
     final surfaceContainer =
-        isDark
-            ? _blend(const Color(0xFF181818), option.primary, 0.05)
-            : _blend(Colors.white, option.primary, 0.08);
+        isDark ? const Color(0xFF1E1E1E) : _blend(Colors.white, primary, 0.08);
     final surfaceContainerHigh =
         isDark
-            ? _blend(const Color(0xFF202020), option.primary, 0.05)
-            : _blend(const Color(0xFFF5F7FC), option.primary, 0.10);
+            ? const Color(0xFF282828)
+            : _blend(const Color(0xFFF5F7FC), primary, 0.10);
     final outline =
         isDark
-            ? _blend(const Color(0xFF3A3A3A), option.primary, 0.08)
-            : _blend(const Color(0xFFD5DDEC), option.primary, 0.28);
+            ? const Color(0xFF3A3A3A)
+            : _blend(const Color(0xFFD5DDEC), primary, 0.28);
     final textPrimary =
         isDark
-            ? _blend(const Color(0xFFF5F5F5), option.primary, 0.02)
-            : _blend(const Color(0xFF1F2A44), option.primary, 0.06);
+            ? const Color(0xFFFFFFFF)
+            : _blend(const Color(0xFF1F2A44), primary, 0.06);
     final textSecondary =
         isDark
-            ? _blend(const Color(0xFFA7A7A7), option.primary, 0.02)
-            : _blend(const Color(0xFF6E7891), option.primary, 0.18);
+            ? const Color(0xFFB3B3B3)
+            : _blend(const Color(0xFF6E7891), primary, 0.18);
     final colorScheme = baseScheme.copyWith(
-      primary: option.primary,
-      secondary: baseScheme.secondary,
-      tertiary: baseScheme.tertiary,
+      primary: primary,
+      secondary: isDark ? primary : baseScheme.secondary,
+      tertiary: isDark ? primary : baseScheme.tertiary,
       surface: surface,
       onSurface: textPrimary,
       outline: outline,
@@ -248,16 +195,16 @@ class AppTheme {
       surfaceContainerHighest: surfaceContainerHigh,
       surfaceContainerLow:
           isDark
-              ? _blend(const Color(0xFF141414), option.primary, 0.03)
-              : _blend(Colors.white, option.primary, 0.04),
+              ? const Color(0xFF151515)
+              : _blend(Colors.white, primary, 0.04),
       surfaceContainerLowest:
           isDark
-              ? const Color(0xFF0D0D0D)
-              : _blend(Colors.white, option.primary, 0.02),
+              ? const Color(0xFF0B0B0B)
+              : _blend(Colors.white, primary, 0.02),
     );
     final palette = _buildPalette(
       isDark: isDark,
-      primary: option.primary,
+      primary: primary,
       surface: surface,
     );
 
@@ -329,24 +276,21 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: option.primary, width: 1.5),
+          borderSide: BorderSide(color: primary, width: 1.5),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
         backgroundColor: surfaceContainer,
-        selectedColor: option.primary.withValues(alpha: isDark ? 0.18 : 0.18),
+        selectedColor: primary.withValues(alpha: isDark ? 0.18 : 0.18),
         side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.55)),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
-        indicatorColor: option.primary.withValues(alpha: isDark ? 0.18 : 0.16),
+        indicatorColor: primary.withValues(alpha: isDark ? 0.18 : 0.16),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color:
-                selected
-                    ? option.primary
-                    : textSecondary.withValues(alpha: 0.95),
+            color: selected ? primary : textSecondary.withValues(alpha: 0.95),
           );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
@@ -362,14 +306,12 @@ class AppTheme {
         thickness: 1,
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: option.primary,
-        linearTrackColor: option.primary.withValues(
-          alpha: isDark ? 0.14 : 0.16,
-        ),
+        color: primary,
+        linearTrackColor: primary.withValues(alpha: isDark ? 0.14 : 0.16),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: option.primary,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -386,7 +328,7 @@ class AppTheme {
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         foregroundColor: Colors.white,
-      ).copyWith(backgroundColor: option.primary),
+      ).copyWith(backgroundColor: primary),
     );
   }
 
@@ -397,22 +339,20 @@ class AppTheme {
   }) {
     if (isDark) {
       return AppThemePalette(
-        successFill: const Color(0xFF16281F),
-        successBorder: const Color(0xFF27543C),
-        successForeground: const Color(0xFF7FD6A8),
-        warningFill: const Color(0xFF332512),
-        warningBorder: const Color(0xFF715629),
-        warningForeground: const Color(0xFFF0C267),
-        infoFill: _blend(const Color(0xFF171717), primary, 0.08),
-        infoBorder: _blend(const Color(0xFF2A2A2A), primary, 0.16),
-        infoForeground: _blend(const Color(0xFFC8D5FF), primary, 0.06),
+        successFill: const Color(0xFF1E1E1E),
+        successBorder: const Color(0xFF3A3A3A),
+        successForeground: primary,
+        warningFill: const Color(0xFF1E1E1E),
+        warningBorder: const Color(0xFF3A3A3A),
+        warningForeground: const Color(0xFFB3B3B3),
+        infoFill: const Color(0xFF1E1E1E),
+        infoBorder: const Color(0xFF3A3A3A),
+        infoForeground: primary,
         neutralFill: const Color(0xFF171717),
         neutralBorder: const Color(0xFF2A2A2A),
         neutralForeground: const Color(0xFF9A9A9A),
         glassBackground: Colors.black.withValues(alpha: 0.50),
         glassBorder: Colors.white.withValues(alpha: 0.06),
-        glassGradientStart: Colors.white.withValues(alpha: 0.06),
-        glassGradientEnd: surface.withValues(alpha: 0.08),
       );
     }
 
@@ -431,8 +371,6 @@ class AppTheme {
       neutralForeground: Color(0xFF98A3BA),
       glassBackground: Color(0x33FFFFFF),
       glassBorder: Color(0x3DFFFFFF),
-      glassGradientStart: Color(0x57FFFFFF),
-      glassGradientEnd: Color(0x24FFFFFF),
     );
   }
 

@@ -7,7 +7,7 @@ import '../../../data/models/activity.dart';
 import '../../../data/models/activity_completion_payload.dart';
 import '../../../data/models/activity_status.dart';
 import '../../../data/models/category.dart';
-import '../../../state/today_controller.dart';
+import '../models/today_state.dart';
 import '../../shared/widgets/completion_quality_sheet.dart';
 
 class TodayActivityCard extends StatelessWidget {
@@ -32,8 +32,7 @@ class TodayActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = item.status;
     final scheme = Theme.of(context).colorScheme;
-    final categoryColor =
-        item.activity.colorOrNull ?? category?.color ?? scheme.primary;
+    final categoryColor = scheme.primary;
     final meta = _buildMeta();
     final description = item.activity.description?.trim();
     final hasDescription = description != null && description.isNotEmpty;
@@ -151,6 +150,19 @@ class TodayActivityCard extends StatelessWidget {
                           ),
                         ],
                       ],
+                    ),
+                  ],
+                  if (item.okrCompletedCount != null &&
+                      item.okrPlannedCount != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'No ciclo: ${item.okrCompletedCount}/${item.okrPlannedCount}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                   if (hasDescription) ...[

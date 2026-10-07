@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/utils/okr_progress_utils.dart';
+import '../core/utils/activity_planning_utils.dart';
 import '../data/models/activity.dart';
 import '../state/providers.dart';
 
@@ -99,7 +100,12 @@ class OkrWorkspaceController extends AsyncNotifier<OkrWorkspaceState> {
           ..sort(_compareActivities);
     final independentActivities =
         activities
-            .where((item) => item.objectiveId == null && item.isActive)
+            .where(
+              (item) =>
+                  item.objectiveId == null &&
+                  item.isActive &&
+                  item.isWithinPeriod(DateTime.now()),
+            )
             .toList()
           ..sort(_compareActivities);
 
@@ -161,55 +167,13 @@ class OkrWorkspaceController extends AsyncNotifier<OkrWorkspaceState> {
   }
 
   bool _isScheduledForCurrentWeek(Activity activity) {
-    if (!activity.isActive) return false;
-
-    final now = _normalize(DateTime.now());
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(const Duration(days: 6));
-
-    switch (activity.recurrence) {
-      case ActivityRecurrence.daily:
-        return !activity.createdAt.isAfter(
-          DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59, 999),
-        );
-      case ActivityRecurrence.weekly:
-      case ActivityRecurrence.weeklyFixed:
-        return !activity.createdAt.isAfter(
-          DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59, 999),
-        );
-      case ActivityRecurrence.oneOff:
-        final scheduledDate = activity.scheduledDate;
-        if (scheduledDate == null) return false;
-        final normalized = _normalize(scheduledDate);
-        return !normalized.isBefore(weekStart) && !normalized.isAfter(weekEnd);
-      case ActivityRecurrence.monthly:
-        final scheduledDate = activity.scheduledDate;
-        if (scheduledDate == null) return false;
-        return _weekContainsDayOfMonth(
-          weekStart: weekStart,
-          weekEnd: weekEnd,
-          dayOfMonth: scheduledDate.day,
-        );
-      case ActivityRecurrence.flexible:
-        return false;
-    }
+    final now = DateTime.now();
+    return activity.isActive &&
+        activity.isWithinPeriod(now) &&
+        ActivityPlanningUtils.weeklyTargetCountForActivity(
+              activity: activity,
+              date: now,
+            ) >
+            0;
   }
-
-  bool _weekContainsDayOfMonth({
-    required DateTime weekStart,
-    required DateTime weekEnd,
-    required int dayOfMonth,
-  }) {
-    for (
-      DateTime cursor = weekStart;
-      !cursor.isAfter(weekEnd);
-      cursor = cursor.add(const Duration(days: 1))
-    ) {
-      if (cursor.day == dayOfMonth) return true;
-    }
-    return false;
-  }
-
-  DateTime _normalize(DateTime value) =>
-      DateTime(value.year, value.month, value.day);
 }

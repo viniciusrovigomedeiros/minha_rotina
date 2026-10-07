@@ -156,6 +156,11 @@ class WeeklyGoalProgressUtils {
 
     final matchedLogs =
         completedLogs.where((log) {
+          final activity = activitiesById[log.activityId];
+          if (activity != null &&
+              !activity.isWithinPeriod(DateUtilsX.fromDayKey(log.dayKey))) {
+            return false;
+          }
           switch (goal.scope ?? WeeklyGoalScope.overall) {
             case WeeklyGoalScope.overall:
               return true;

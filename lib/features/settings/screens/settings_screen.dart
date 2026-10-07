@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/time_of_day_utils.dart';
+import '../../social/screens/social_hub_screen.dart';
 import '../../../state/activities_controller.dart';
 import '../../../state/history_controller.dart';
 import '../../../state/providers.dart';
@@ -44,7 +45,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Escolha se o app segue o sistema, modo claro ou escuro.',
+                  'Escolha entre o visual do sistema, claro ou escuro.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.outline,
                   ),
@@ -67,50 +68,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       )
                                       .updateThemeModeKey(option.key);
                                 },
-                        label: Text(option.label),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Cor principal',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Escolha a cor base usada nos destaques e acoes do aplicativo.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final option in AppTheme.options)
-                      ChoiceChip(
-                        selected: settings.themeKey == option.key,
-                        onSelected:
-                            _isBusy
-                                ? null
-                                : (_) async {
-                                  await ref
-                                      .read(
-                                        userSettingsControllerProvider.notifier,
-                                      )
-                                      .updateThemeKey(option.key);
-                                },
-                        avatar: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: option.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
                         label: Text(option.label),
                       ),
                   ],
@@ -202,6 +159,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         },
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Social',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: const Icon(Icons.groups_rounded),
+                    title: const Text('Abrir modulo social'),
+                    subtitle: const Text(
+                      'Desafios, accountability buddy, check-ins e metas compartilhadas.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SocialHubScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),

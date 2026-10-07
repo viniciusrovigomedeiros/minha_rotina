@@ -66,6 +66,47 @@ class AppDataSnapshot {
       'userSettings': userSettings.toMap(),
     };
   }
+
+  factory AppDataSnapshot.fromMap(Map<String, dynamic> root) {
+    List<T> parseList<T>(String key, T Function(Map<String, dynamic>) fromMap) {
+      final raw = root[key];
+      if (raw is! List) return const [];
+      return raw
+          .map((entry) => fromMap(Map<String, dynamic>.from(entry as Map)))
+          .toList();
+    }
+
+    final settingsRaw = root['userSettings'];
+    if (settingsRaw is! Map) {
+      throw const FormatException('Backup sem configuracoes do usuario.');
+    }
+
+    final meta = root['meta'];
+    final exportedAt =
+        meta is Map && meta['exportedAt'] is String
+            ? DateTime.parse(meta['exportedAt'] as String)
+            : DateTime.now();
+
+    return AppDataSnapshot(
+      activities: parseList('activities', Activity.fromMap),
+      dailyLogs: parseList('dailyLogs', DailyActivityLog.fromMap),
+      dailyClosures: parseList('dailyClosures', DailyClosureEntry.fromMap),
+      dailyPlans: parseList('dailyPlans', DailyPlanSnapshot.fromMap),
+      weeklyGoals: parseList('weeklyGoals', WeeklyGoal.fromMap),
+      okrCycles: parseList('okrCycles', OkrCycle.fromMap),
+      okrObjectives: parseList('okrObjectives', OkrObjective.fromMap),
+      keyResults: parseList('keyResults', KeyResult.fromMap),
+      keyResultCheckIns: parseList(
+        'keyResultCheckIns',
+        KeyResultCheckIn.fromMap,
+      ),
+      categories: parseList('categories', Category.fromMap),
+      userSettings: UserSettings.fromMap(
+        Map<String, dynamic>.from(settingsRaw),
+      ),
+      exportedAt: exportedAt,
+    );
+  }
 }
 
 class AppDataRepository {
@@ -193,6 +234,22 @@ class AppDataRepository {
       await _keyResultCheckInRepository.upsert(checkIn);
     }
     await _userSettingsRepository.save(userSettings);
+  }
+
+  Future<void> replaceSnapshot(AppDataSnapshot snapshot) {
+    return replaceAll(
+      activities: snapshot.activities,
+      dailyLogs: snapshot.dailyLogs,
+      dailyClosures: snapshot.dailyClosures,
+      dailyPlans: snapshot.dailyPlans,
+      weeklyGoals: snapshot.weeklyGoals,
+      okrCycles: snapshot.okrCycles,
+      okrObjectives: snapshot.okrObjectives,
+      keyResults: snapshot.keyResults,
+      keyResultCheckIns: snapshot.keyResultCheckIns,
+      categories: snapshot.categories,
+      userSettings: snapshot.userSettings,
+    );
   }
 
   Future<void> clearAll() async {

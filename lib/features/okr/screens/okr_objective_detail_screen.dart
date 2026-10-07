@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import '../../../core/utils/okr_progress_utils.dart';
 import '../../../data/models/activity.dart';
 import '../../../data/models/okr_objective.dart';
+import '../../../data/models/social/social_challenge.dart';
 import '../../../state/okr_management_controller.dart';
 import '../../../state/okr_workspace_controller.dart';
 import '../../activities/screens/activity_form_screen.dart';
+import '../../social/screens/social_hub_screen.dart';
 import '../widgets/okr_check_in_sheet.dart';
 import 'okr_objective_form_screen.dart';
 
@@ -37,6 +39,24 @@ class OkrObjectiveDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Detalhe do objetivo'),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder:
+                      (_) => SocialHubScreen(
+                        initialChallengeTitle: progress.objective.title,
+                        initialChallengeDescription:
+                            'Desafio criado a partir do OKR "${progress.objective.title}".',
+                        initialChallengeType:
+                            SocialChallengeType.sharedObjective,
+                      ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.groups_rounded),
+            tooltip: 'Criar desafio com este OKR',
+          ),
           IconButton(
             onPressed: () {
               Navigator.of(context).push(

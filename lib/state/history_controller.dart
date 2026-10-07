@@ -79,6 +79,9 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
     final dailyClosures =
         await ref.read(dailyClosureRepositoryProvider).getAll();
 
+    final activitiesById = {
+      for (final activity in activities) activity.id: activity,
+    };
     final logsByDay = <String, List<DailyActivityLog>>{};
     for (final log in logs) {
       logsByDay.putIfAbsent(log.dayKey, () => []).add(log);
@@ -110,7 +113,14 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
       );
       final plannedActivityIds = planSnapshot.activityIds.toSet();
 
-      final dayLogs = logsByDay[dayKey] ?? const [];
+      final dayLogs =
+          (logsByDay[dayKey] ?? const <DailyActivityLog>[])
+              .where(
+                (log) =>
+                    activitiesById[log.activityId]?.isWithinPeriod(dayDate) ??
+                    true,
+              )
+              .toList();
       final completedLogs =
           dayLogs
               .where((entry) => entry.status == ActivityStatus.completed)
@@ -194,9 +204,9 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
 
     for (final activity in activities) {
       final created = DateTime(
-        activity.createdAt.year,
-        activity.createdAt.month,
-        activity.createdAt.day,
+        activity.effectiveStartDate.year,
+        activity.effectiveStartDate.month,
+        activity.effectiveStartDate.day,
       );
       if (created.isBefore(first)) first = created;
     }
@@ -242,16 +252,17 @@ class HistoryController extends AsyncNotifier<List<HistoryDaySummary>> {
 
     for (final activity in activities) {
       if (activity.recurrence != ActivityRecurrence.weekly) continue;
-      if (!ActivityPlanningUtils.isCreatedBeforeDayEnd(
-        activity,
-        normalizedDate,
-      )) {
+      if (!activity.isWithinPeriod(normalizedDate)) {
         continue;
       }
 
-      target += activity.effectiveWeeklyTargetCount;
+      target += ActivityPlanningUtils.weeklyTargetCountForActivity(
+        activity: activity,
+        date: normalizedDate,
+      );
       completed += ActivityPlanningUtils.completedCountForWeekUntilDate(
         activityId: activity.id,
+        activity: activity,
         logs: logs,
         weekStart: weekStart,
         weekEnd: weekEnd,

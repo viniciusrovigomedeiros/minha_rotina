@@ -6,13 +6,16 @@ import '../../../core/utils/okr_progress_utils.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../data/models/activity.dart';
 import '../../../data/models/activity_status.dart';
+import '../../../data/models/social/social_challenge.dart';
 import '../../../state/activities_controller.dart';
 import '../../../state/okr_management_controller.dart';
 import '../../../state/okr_workspace_controller.dart';
+import '../../../state/social/social_providers.dart';
 import '../../../state/today_controller.dart';
 import '../../activities/screens/activity_form_screen.dart';
 import '../../shared/widgets/completion_quality_sheet.dart';
 import '../../shared/widgets/settings_action_button.dart';
+import '../../social/screens/social_hub_screen.dart';
 import '../widgets/okr_check_in_sheet.dart';
 import 'okr_cycles_screen.dart';
 import 'okr_objective_detail_screen.dart';
@@ -282,12 +285,14 @@ class _ObjectivePreviewCard extends StatelessWidget {
               summaryItems.join(' • '),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 if (canCheckIn)
                   OutlinedButton.icon(
@@ -299,9 +304,7 @@ class _ObjectivePreviewCard extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.edit_calendar_rounded, size: 16),
-                    label: Text(
-                      pendingCount > 0 ? 'Check-in' : 'Atualizar',
-                    ),
+                    label: Text(pendingCount > 0 ? 'Check-in' : 'Atualizar'),
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       padding: const EdgeInsets.symmetric(
@@ -310,7 +313,18 @@ class _ObjectivePreviewCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                const Spacer(),
+                OutlinedButton.icon(
+                  onPressed: () => _openSocialChallenge(context),
+                  icon: const Icon(Icons.groups_rounded, size: 16),
+                  label: const Text('Desafiar'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -342,7 +356,11 @@ class _ObjectivePreviewCard extends StatelessWidget {
                         ? '$pendingCount pendente(s) esta semana'
                         : 'Tudo em dia',
                 children: [
-                  for (int index = 0; index < progress.keyResults.length; index++)
+                  for (
+                    int index = 0;
+                    index < progress.keyResults.length;
+                    index++
+                  )
                     _MiniObjectiveRow(
                       icon: Icons.track_changes_rounded,
                       title: progress.keyResults[index].keyResult.title,
@@ -368,7 +386,8 @@ class _ObjectivePreviewCard extends StatelessWidget {
               _CompactExpansionSection(
                 storageKey: 'objective-actions-home-${progress.objective.id}',
                 title: 'Próximas ações',
-                subtitle: '${nextActions.length} ação(ões) ligada(s) ao objetivo',
+                subtitle:
+                    '${nextActions.length} ação(ões) ligada(s) ao objetivo',
                 children: [
                   for (int index = 0; index < nextActions.length; index++)
                     _MiniObjectiveRow(
@@ -392,6 +411,49 @@ class _ObjectivePreviewCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openSocialChallenge(BuildContext context) async {
+    final session = ref.read(socialSessionControllerProvider).valueOrNull;
+    final destination = SocialHubScreen(
+      initialChallengeTitle: progress.objective.title,
+      initialChallengeDescription:
+          'Desafio criado a partir do OKR "${progress.objective.title}".',
+      initialChallengeType: SocialChallengeType.sharedObjective,
+    );
+
+    if (session?.isAuthenticated == true) {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => destination));
+      return;
+    }
+
+    if (!context.mounted) return;
+    final createAccount = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Convide alguém para este OKR'),
+            content: const Text(
+              'Crie uma conta para transformar este objetivo em um desafio compartilhado e acompanhar a evolução do grupo.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Agora não'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Criar conta'),
+              ),
+            ],
+          ),
+    );
+    if (createAccount != true || !context.mounted) return;
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => destination));
   }
 }
 
@@ -858,11 +920,7 @@ class _HomeHierarchyTile extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
       subtitle: Padding(

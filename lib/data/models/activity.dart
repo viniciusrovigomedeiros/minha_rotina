@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 enum ActivityRecurrence {
   oneOff,
   daily,
@@ -56,6 +54,8 @@ class Activity {
     this.keyResultId,
     this.recurrence = ActivityRecurrence.flexible,
     this.scheduledDate,
+    this.startDate,
+    this.endDate,
   });
 
   final String id;
@@ -72,12 +72,24 @@ class Activity {
   final String? keyResultId;
   final ActivityRecurrence recurrence;
   final DateTime? scheduledDate;
+  final DateTime? startDate;
+  final DateTime? endDate;
   final bool isActive;
   final bool remindersEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  Color? get colorOrNull => colorHex == null ? null : Color(colorHex!);
+  DateTime get effectiveStartDate {
+    final start = startDate ?? createdAt;
+    return DateTime(start.year, start.month, start.day);
+  }
+
+  bool isWithinPeriod(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    final end = endDate;
+    return !day.isBefore(effectiveStartDate) &&
+        (end == null || !day.isAfter(DateTime(end.year, end.month, end.day)));
+  }
 
   bool get isRecurringForObjective =>
       recurrence == ActivityRecurrence.daily ||
@@ -113,6 +125,8 @@ class Activity {
     String? keyResultId,
     ActivityRecurrence? recurrence,
     DateTime? scheduledDate,
+    DateTime? startDate,
+    DateTime? endDate,
     bool? isActive,
     bool? remindersEnabled,
     DateTime? createdAt,
@@ -125,6 +139,8 @@ class Activity {
     bool clearObjectiveId = false,
     bool clearKeyResultId = false,
     bool clearScheduledDate = false,
+    bool clearStartDate = false,
+    bool clearEndDate = false,
     bool clearWeeklyTargetCount = false,
   }) {
     return Activity(
@@ -147,6 +163,8 @@ class Activity {
       recurrence: recurrence ?? this.recurrence,
       scheduledDate:
           clearScheduledDate ? null : scheduledDate ?? this.scheduledDate,
+      startDate: clearStartDate ? null : startDate ?? this.startDate,
+      endDate: clearEndDate ? null : endDate ?? this.endDate,
       isActive: isActive ?? this.isActive,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       createdAt: createdAt ?? this.createdAt,
@@ -170,6 +188,8 @@ class Activity {
       'keyResultId': keyResultId,
       'recurrence': recurrence.value,
       'scheduledDate': scheduledDate?.toIso8601String(),
+      'startDate': startDate?.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
       'isActive': isActive,
       'remindersEnabled': remindersEnabled,
       'createdAt': createdAt.toIso8601String(),
@@ -202,6 +222,14 @@ class Activity {
               ? null
               : DateTime.parse(map['scheduledDate'] as String),
       isActive: map['isActive'] as bool,
+      startDate:
+          map['startDate'] == null
+              ? null
+              : DateTime.parse(map['startDate'] as String),
+      endDate:
+          map['endDate'] == null
+              ? null
+              : DateTime.parse(map['endDate'] as String),
       remindersEnabled: (map['remindersEnabled'] as bool?) ?? false,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),

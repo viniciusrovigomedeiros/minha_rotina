@@ -6,6 +6,17 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app.minharotina.mobile</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Minha Rotina</string>
 	<key>CFBundleExecutable</key>
@@ -30,6 +41,10 @@
 	<string>O app precisa de acesso à sua biblioteca para selecionar arquivos durante importação e compartilhamento de dados em JSON.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>O app pode salvar arquivos exportados na biblioteca quando você solicitar.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

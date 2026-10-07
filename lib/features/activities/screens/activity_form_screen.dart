@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/icon_mapper.dart';
+import '../../../core/utils/quarter_date_range.dart';
+import '../widgets/activity_period_fields.dart';
 import '../../../core/utils/time_of_day_utils.dart';
 import '../../../data/models/activity.dart';
 import '../../../state/activities_controller.dart';
@@ -38,7 +40,8 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
   int _weeklyTargetCount = 4;
   ActivityRecurrence _recurrence = ActivityRecurrence.flexible;
   DateTime? _scheduledDate;
-  int? _selectedColor;
+  DateTime? _startDate;
+  DateTime? _endDate;
   String? _iconKey;
   String? _objectiveId;
   String? _keyResultId;
@@ -130,7 +133,8 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               : activity.effectiveWeeklyTargetCount;
       _recurrence = activity.recurrence;
       _scheduledDate = activity.scheduledDate;
-      _selectedColor = activity.colorHex;
+      _startDate = activity.startDate;
+      _endDate = activity.endDate;
       _iconKey = activity.iconKey;
       _objectiveId = activity.objectiveId;
       _keyResultId = activity.keyResultId;
@@ -146,8 +150,10 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       _weekdays = [];
       _weeklyTargetCount = 4;
       _recurrence = ActivityRecurrence.weekly;
+      final now = DateTime.now();
+      _startDate = DateTime(now.year, now.month, now.day);
+      _endDate = QuarterDateRange.containing(now).end;
       _iconKey = 'checklist';
-      _selectedColor = _colorOptions.first;
       _objectiveId = widget.initialObjectiveId;
       _keyResultId = widget.initialKeyResultId;
     }
@@ -214,6 +220,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
                     value: _objectiveId,
+                    isExpanded: true,
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
@@ -255,6 +262,7 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
                     value: _keyResultId,
+                    isExpanded: true,
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
@@ -339,6 +347,21 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  ActivityPeriodFields(
+                    startDate: _startDate,
+                    endDate: _endDate,
+                    fallbackStartDate:
+                        widget.activity?.effectiveStartDate ?? DateTime.now(),
+                    onStartDateChanged:
+                        (date) => setState(() => _startDate = date),
+                    onEndDateChanged: (date) => setState(() => _endDate = date),
+                    onQuarterSelected:
+                        (range) => setState(() {
+                          _startDate = range.start;
+                          _endDate = range.end;
+                        }),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<ActivityRecurrence>(
@@ -477,25 +500,6 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Cor do card',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children:
-                        _colorOptions.map((color) {
-                          return _ColorOptionSwatch(
-                            color: Color(color),
-                            selected: _selectedColor == color,
-                            onTap: () => setState(() => _selectedColor = color),
-                            size: 38,
-                          );
-                        }).toList(),
-                  ),
-                  const SizedBox(height: 16),
                   Text('Ícone', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Wrap(
@@ -614,6 +618,16 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
       return;
     }
 
+    final effectiveStart =
+        _startDate ?? widget.activity?.effectiveStartDate ?? DateTime.now();
+    if (_endDate != null &&
+        DateUtils.dateOnly(
+          _endDate!,
+        ).isBefore(DateUtils.dateOnly(effectiveStart))) {
+      _showMessage('A data final deve ser igual ou posterior à data inicial.');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final controller = ref.read(activitiesControllerProvider.notifier);
@@ -633,11 +647,12 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
             _startTime == null ? null : TimeOfDayUtils.toMinutes(_startTime!),
         endMinutes:
             _endTime == null ? null : TimeOfDayUtils.toMinutes(_endTime!),
-        colorHex: _selectedColor,
         iconKey: _iconKey,
         objectiveId: _objectiveId,
         keyResultId: _keyResultId,
         scheduledDate: _scheduledDate,
+        startDate: _startDate,
+        endDate: _endDate,
         isActive: _isActive,
         remindersEnabled: _remindersEnabled,
       );
@@ -661,22 +676,25 @@ class _ActivityFormScreenState extends ConsumerState<ActivityFormScreen> {
               _startTime == null ? null : TimeOfDayUtils.toMinutes(_startTime!),
           endMinutes:
               _endTime == null ? null : TimeOfDayUtils.toMinutes(_endTime!),
-          colorHex: _selectedColor,
           iconKey: _iconKey,
           objectiveId: _objectiveId,
           keyResultId: _keyResultId,
           scheduledDate: _scheduledDate,
+          startDate: _startDate,
+          endDate: _endDate,
           isActive: _isActive,
           remindersEnabled: _remindersEnabled,
           updatedAt: DateTime.now(),
           clearDescription: _descriptionController.text.trim().isEmpty,
           clearStartMinutes: _startTime == null,
           clearEndMinutes: _endTime == null,
-          clearColor: _selectedColor == null,
+          clearColor: true,
           clearIcon: _iconKey == null,
           clearObjectiveId: _objectiveId == null,
           clearKeyResultId: _keyResultId == null,
           clearScheduledDate: _scheduledDate == null,
+          clearStartDate: _startDate == null,
+          clearEndDate: _endDate == null,
           clearWeeklyTargetCount: _recurrence != ActivityRecurrence.weekly,
         ),
       );

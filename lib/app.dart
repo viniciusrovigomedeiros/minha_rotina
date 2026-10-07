@@ -6,23 +6,22 @@ import 'core/constants/app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'features/shared/widgets/main_shell.dart';
 import 'state/user_settings_controller.dart';
+import 'state/cloud_sync_providers.dart';
 
 class MinhaRotinaApp extends ConsumerWidget {
   const MinhaRotinaApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(cloudSyncAutoStartProvider);
     final settings = ref.watch(userSettingsControllerProvider).valueOrNull;
-    final themeKey = settings?.themeKey ?? 'blue';
-    final themeMode = AppTheme.themeModeByKey(
-      settings?.themeModeKey ?? 'system',
-    );
+    final themeMode = AppTheme.themeModeByKey(settings?.themeModeKey ?? 'dark');
 
     return MaterialApp(
       title: AppStrings.appTitle,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(themeKey: themeKey),
-      darkTheme: AppTheme.dark(themeKey: themeKey),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: themeMode,
       locale: const Locale('pt', 'BR'),
       supportedLocales: const [Locale('pt', 'BR')],

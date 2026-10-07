@@ -69,12 +69,10 @@ class _CompletionQualitySheet extends StatefulWidget {
 }
 
 class _CompletionQualitySheetState extends State<_CompletionQualitySheet> {
-  final List<bool> _criteria = List<bool>.filled(4, false);
   double _score = 7;
 
   @override
   Widget build(BuildContext context) {
-    final checkedCount = _criteria.where((item) => item).length;
     final quality = _qualityForScore(_score.round());
 
     return SafeArea(
@@ -96,35 +94,14 @@ class _CompletionQualitySheetState extends State<_CompletionQualitySheet> {
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Critérios de qualidade',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-              ),
               const SizedBox(height: 8),
-              _buildCriterionTile(
-                index: 0,
-                label: 'Fiz com foco real?',
-                context: context,
+              Text(
+                'Dê uma nota rápida para como essa atividade foi executada.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
-              _buildCriterionTile(
-                index: 1,
-                label: 'Revisei antes de concluir?',
-                context: context,
-              ),
-              _buildCriterionTile(
-                index: 2,
-                label: 'Está claro e bem acabado?',
-                context: context,
-              ),
-              _buildCriterionTile(
-                index: 3,
-                label: 'Eu assinaria meu nome nisso?',
-                context: context,
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 'Nota de qualidade: ${_score.round()}/10',
                 style: Theme.of(
@@ -143,10 +120,7 @@ class _CompletionQualitySheetState extends State<_CompletionQualitySheet> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: [
-                  CompletionQualityChip(quality: quality),
-                  _MiniInfoTag(text: 'Checklist: $checkedCount/4'),
-                ],
+                children: [CompletionQualityChip(quality: quality)],
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -157,13 +131,13 @@ class _CompletionQualitySheetState extends State<_CompletionQualitySheet> {
                       ActivityCompletionPayload(
                         completionQuality: quality,
                         qualityScore: _score.round(),
-                        checklistCheckedCount: checkedCount,
-                        checklistTotalCount: _criteria.length,
+                        checklistCheckedCount: 0,
+                        checklistTotalCount: 0,
                       ),
                     );
                   },
                   icon: const Icon(Icons.check_rounded),
-                  label: const Text('Concluir com qualidade'),
+                  label: const Text('Salvar nota'),
                 ),
               ),
             ],
@@ -173,41 +147,10 @@ class _CompletionQualitySheetState extends State<_CompletionQualitySheet> {
     );
   }
 
-  Widget _buildCriterionTile({
-    required int index,
-    required String label,
-    required BuildContext context,
-  }) {
-    return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-      value: _criteria[index],
-      onChanged: (value) => setState(() => _criteria[index] = value),
-    );
-  }
-
   ActivityCompletionQuality _qualityForScore(int score) {
     if (score <= 4) return ActivityCompletionQuality.low;
     if (score <= 7) return ActivityCompletionQuality.medium;
     return ActivityCompletionQuality.high;
-  }
-}
-
-class _MiniInfoTag extends StatelessWidget {
-  const _MiniInfoTag({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(text, style: Theme.of(context).textTheme.labelSmall),
-    );
   }
 }
 

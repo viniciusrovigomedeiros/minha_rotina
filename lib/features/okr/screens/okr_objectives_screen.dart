@@ -123,6 +123,7 @@ class OkrObjectivesScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'objectives-new-objective',
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const OkrObjectiveFormScreen()),
@@ -211,13 +212,12 @@ class _ObjectiveCard extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     progress.objective.title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          height: 1.15,
-                                        ),
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.15,
+                                    ),
                                   ),
                                 ],
                               ),

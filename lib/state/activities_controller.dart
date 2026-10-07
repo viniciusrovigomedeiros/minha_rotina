@@ -2,7 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/models/activity.dart';
+import 'daily_goal_live_activity_sync.dart';
 import 'history_controller.dart';
+import 'okr_widget_sync.dart';
+import 'okr_workspace_controller.dart';
 import 'providers.dart';
 import 'weekly_dashboard_controller.dart';
 import 'weekly_goals_controller.dart';
@@ -29,6 +32,8 @@ class ActivitiesController extends AsyncNotifier<List<Activity>> {
     });
     await _syncNotifications();
     _invalidateDerivedStates();
+    await ref.read(dailyGoalLiveActivitySyncProvider).refresh();
+    await ref.read(okrWidgetSyncProvider).refresh();
   }
 
   Future<void> create({
@@ -40,11 +45,12 @@ class ActivitiesController extends AsyncNotifier<List<Activity>> {
     ActivityRecurrence recurrence = ActivityRecurrence.flexible,
     int? startMinutes,
     int? endMinutes,
-    int? colorHex,
     String? iconKey,
     String? objectiveId,
     String? keyResultId,
     DateTime? scheduledDate,
+    DateTime? startDate,
+    DateTime? endDate,
     bool isActive = true,
     bool remindersEnabled = false,
   }) async {
@@ -59,12 +65,13 @@ class ActivitiesController extends AsyncNotifier<List<Activity>> {
       weeklyTargetCount: weeklyTargetCount,
       startMinutes: startMinutes,
       endMinutes: endMinutes,
-      colorHex: colorHex,
       iconKey: iconKey,
       objectiveId: objectiveId,
       keyResultId: keyResultId,
       recurrence: recurrence,
       scheduledDate: scheduledDate,
+      startDate: startDate,
+      endDate: endDate,
       isActive: isActive,
       remindersEnabled: remindersEnabled,
       createdAt: now,
@@ -110,6 +117,7 @@ class ActivitiesController extends AsyncNotifier<List<Activity>> {
 
   void _invalidateDerivedStates() {
     ref.invalidate(historyControllerProvider);
+    ref.invalidate(okrWorkspaceControllerProvider);
     ref.invalidate(weeklyDashboardControllerProvider);
     ref.invalidate(weeklyGoalsControllerProvider);
   }

@@ -85,8 +85,8 @@ class UserSettings {
           (map['goalReminderMinutes'] as int?) ?? ((19 * 60) + 30),
       dailyClosureReminderMinutes:
           (map['dailyClosureReminderMinutes'] as int?) ?? ((21 * 60) + 45),
-      themeKey: map['themeKey'] as String? ?? 'blue',
-      themeModeKey: map['themeModeKey'] as String? ?? 'system',
+      themeKey: 'blue',
+      themeModeKey: _themeModeFromMap(map['themeModeKey']),
       updatedAt: DateTime.parse(
         map['updatedAt'] as String? ?? DateTime.now().toIso8601String(),
       ),
@@ -103,8 +103,19 @@ class UserSettings {
       goalReminderMinutes: (19 * 60) + 30,
       dailyClosureReminderMinutes: (21 * 60) + 45,
       themeKey: 'blue',
-      themeModeKey: 'system',
+      themeModeKey: 'dark',
       updatedAt: DateTime.now(),
     );
+  }
+
+  static String _themeModeFromMap(Object? value) {
+    switch (value) {
+      case 'light':
+      case 'dark':
+      case 'system':
+        return value as String;
+      default:
+        return 'dark';
+    }
   }
 }
